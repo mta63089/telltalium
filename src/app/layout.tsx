@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Bot Checker — YouTube Engagement Intelligence", template: "%s · Bot Checker" },
+  title: { default: "Veyra — Signal Intelligence", template: "%s · Veyra" },
   description: "Explore YouTube engagement anomalies and comment patterns with transparent, reviewable heuristics.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
   robots: { index: false, follow: false },

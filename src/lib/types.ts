@@ -6,7 +6,9 @@ export type CommentSignal =
   | "burst-activity"
   | "new-account"
   | "username-pattern"
-  | "external-link";
+  | "external-link"
+  | "praise-template"
+  | "praise-wave";
 
 export interface VideoRecord {
   id: string;
@@ -72,6 +74,8 @@ export interface CommentAudit {
   genericCount: number;
   burstCount: number;
   newAccountCount: number;
+  praiseCount: number;
+  praiseWaveCount: number;
   metadataAvailableCount: number;
   clusterCount: number;
   clusters: CommentCluster[];
@@ -88,6 +92,23 @@ export interface Finding {
   category: "engagement" | "comments" | "coverage";
 }
 
+export interface VeyraScoreComponent {
+  key: "engagement" | "comments" | "coordination";
+  label: string;
+  weight: number;
+  score: number | null;
+  detail: string;
+}
+
+export interface VeyraScore {
+  value: number | null;
+  label: string;
+  coverage: number;
+  confidence: "low" | "moderate";
+  components: VeyraScoreComponent[];
+  explanation: string;
+}
+
 export interface AnalysisReport {
   id: string;
   mode: "demo" | "live";
@@ -98,6 +119,7 @@ export interface AnalysisReport {
   comparisons: Record<MetricKey, MetricComparison>;
   audit: CommentAudit;
   findings: Finding[];
+  veyraScore: VeyraScore;
   historicalCaveat: string;
   cohortDescription: string;
 }

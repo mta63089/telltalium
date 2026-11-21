@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -51,6 +51,8 @@ const SIGNAL_LABELS: Record<CommentSignal, string> = {
   "new-account": "New account",
   "username-pattern": "Generated-looking name",
   "external-link": "External link",
+  "praise-template": "Generic praise template",
+  "praise-wave": "Generic praise saturation",
 };
 
 const CHART_OPTIONS: Array<{ value: MetricKey; label: string }> = [
@@ -264,7 +266,7 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = objectUrl;
-    anchor.download = `bot-checker-${report.video.id}-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `veyra-${report.video.id}-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(objectUrl);
   }
@@ -273,8 +275,8 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
     <div className="app-shell min-h-screen text-[#edf0fc]">
       <aside className="sidebar hidden w-[250px] shrink-0 flex-col border-r border-[#273047] px-5 pb-6 pt-7 lg:flex">
         <Link href="/" className="flex items-center gap-3 px-2">
-          <span className="brand-mark"><Shield size={23} fill="#f88a78" strokeWidth={1.9} /></span>
-          <span className="leading-tight"><strong className="block text-[17px] tracking-tight text-white">Bot Checker</strong><span className="block text-[10px] font-semibold uppercase tracking-[.16em] text-[#8190ae]">YouTube intelligence</span></span>
+          <span className="brand-mark"><span className="veyra-symbol" aria-hidden>V</span></span>
+          <span className="leading-tight"><strong className="block text-[17px] tracking-tight text-white">Veyra</strong><span className="block text-[10px] font-semibold uppercase tracking-[.2em] text-[#8190ae]">SIGNAL INTELLIGENCE</span></span>
         </Link>
         <div className="mt-12 px-3 text-[10px] font-semibold uppercase tracking-[.21em] text-[#65728f]">Workspace</div>
         <nav className="mt-3 space-y-1.5">
@@ -297,13 +299,13 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
           <p className="text-[11px] leading-[1.65] text-[#96a3bd]">Spot unusual patterns. Understand the evidence. Avoid unsupported accusations.</p>
           <a href="#analyzer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#c5c9ff]">New analysis <ArrowRight size={13} /></a>
         </div>
-        <p className="mt-5 px-2 text-[10px] text-[#667590]">MVP v0.1 · Research preview</p>
+        <p className="mt-5 px-2 text-[10px] text-[#667590]">VEYRA / SIGNAL INTELLIGENCE · v0.2</p>
       </aside>
 
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-20 flex h-[73px] items-center justify-between border-b border-[#283149] bg-[#111626]/90 px-5 backdrop-blur-xl sm:px-9 lg:px-11">
           <div className="flex items-center gap-3 text-sm">
-            <span className="lg:hidden"><Shield size={20} className="text-[#f18b79]" /></span>
+            <span className="lg:hidden"><span className="veyra-symbol text-lg" aria-hidden>V</span></span>
             <span className="font-semibold text-[#eff2ff] lg:font-normal lg:text-[#8796b6]">Workspace</span>
             <span className="hidden text-[#53627f] lg:inline">/</span>
             <span className="hidden font-medium text-[#e7ecff] lg:inline">Overview</span>
@@ -318,7 +320,7 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
           <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[.23em] text-[#959fd4]">Creator intelligence / Overview</div>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[32px]">See beyond the view count<span className="text-[#ff9688]">.</span></h1>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[32px]">Look beyond the numbers<span className="text-[#ff9688]">.</span></h1>
               <p className="mt-2 text-sm text-[#8e9cb5]">Investigate engagement anomalies and comment patterns from public YouTube data.</p>
             </div>
             <button onClick={downloadReport} className="secondary-button"><Download size={15} />Export JSON</button>
@@ -328,8 +330,8 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
             <div className="pointer-events-none absolute -right-10 -top-24 h-80 w-80 rounded-full bg-[#835ba3]/25 blur-[80px]" />
             <div className="pointer-events-none absolute bottom-0 right-24 h-48 w-48 rounded-full bg-[#eb766e]/10 blur-[70px]" />
             <div className="relative z-10 max-w-3xl">
-              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-[#c0c2ff]"><Sparkles size={14} />Start an investigation</div>
-              <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Analyze any public YouTube video</h2>
+              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-[#c0c2ff]"><span className="ping-dot" />VEYRA // NEW INVESTIGATION</div>
+              <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Run a signal scan</h2>
               <p className="mt-2 max-w-2xl text-[13px] leading-[1.65] text-[#9ea9c9]">Compare engagement with recent uploads, inspect comment clusters, and review the signals—not a verdict.</p>
               <form className="mt-6 flex flex-col gap-2.5 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void analyze("live"); }}>
                 <div className="flex min-h-12 flex-1 items-center gap-3 rounded-xl border border-[#454c70] bg-[#11172b] px-4 focus-within:border-[#a09bff]">
@@ -348,7 +350,7 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
 
           <section id="results" className="mt-11 scroll-mt-28">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <SectionTitle kicker="Investigation results" title="Video overview" note={`Analyzed ${formatDate(report.analyzedAt)} · ${report.mode === "demo" ? "Fictional sample data" : "Public YouTube API data"}`} />
+              <SectionTitle kicker="Signal scan / Results" title="Video overview" note={`Analyzed ${formatDate(report.analyzedAt)} · ${report.mode === "demo" ? "Fictional sample data" : "Public YouTube API data"}`} />
               <SeverityPill level={overall} />
             </div>
             <div className="panel mb-5 flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
@@ -364,6 +366,28 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-[#8491af]"><span className="flex items-center gap-1.5"><Clock3 size={12} />Published {formatDate(report.video.publishedAt)}</span><span>·</span><span>{Math.floor(report.video.durationSeconds / 60)} min video</span><span>·</span><span>{report.history.length} comparison uploads</span></div>
               </div>
               {report.mode === "live" && <a className="secondary-button shrink-0" href={`https://www.youtube.com/watch?v=${encodeURIComponent(report.video.id)}`} target="_blank" rel="noreferrer">Watch video <ExternalLink size={14} /></a>}
+            </div>
+            <div className="score-overview mb-5 grid gap-5 p-5 md:grid-cols-[minmax(0,.75fr)_minmax(0,1.25fr)] md:p-7">
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.23em] text-[#6ceafb]"><span className="ping-dot" />VEYRA / INTEGRITY INDEX</div>
+                <div className="mt-5 flex flex-wrap items-center gap-5">
+                  <div className="score-dial" style={{ "--veyra-score": `${report.veyraScore.value ?? 0}%` } as CSSProperties}>
+                    <div className="score-dial-inner"><strong className="text-5xl font-bold tracking-tight text-white">{report.veyraScore.value ?? "—"}</strong><span className="mt-1 text-[10px] font-bold tracking-[.2em] text-[#82a7c4]">/ 100</span></div>
+                  </div>
+                  <div className="min-w-0 flex-1"><h3 className="text-xl font-semibold leading-tight text-white">{report.veyraScore.label}</h3><p className="mt-2 text-xs leading-6 text-[#92adc1]">{report.veyraScore.confidence} confidence · {report.veyraScore.coverage}% signal coverage</p><span className="score-experiment mt-3 inline-block">EXPERIMENTAL · NOT A BOT PROBABILITY</span></div>
+                </div>
+                <p className="mt-5 text-[11px] leading-[1.7] text-[#8aa6bc]">A higher index means fewer anomalies in the signals Veyra can examine. It does not establish that viewers are real or that a creator purchased traffic.</p>
+              </div>
+              <div className="score-components flex flex-col justify-center gap-5 md:border-l md:border-[#253a50] md:pl-7">
+                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">Evidence breakdown</h3><Link href="/methodology" className="text-[11px] font-semibold text-[#78eaff] hover:underline">How scoring works →</Link></div>
+                {report.veyraScore.components.map((component) => (
+                  <div key={component.key}>
+                    <div className="mb-2 flex justify-between gap-3 text-[12px]"><span className="text-[#bfd1e2]">{component.label} <span className="text-[#667c97]">{component.weight}% weight</span></span><span className="font-semibold tabular-nums text-white">{component.score === null ? "No data" : `${component.score}/100`}</span></div>
+                    <div className="h-2 overflow-hidden rounded-sm bg-[#172a3a]"><div className="score-progress h-full" style={{ width: `${component.score ?? 0}%` }} /></div>
+                    <div className="mt-1.5 text-[10px] leading-5 text-[#718ca6]">{component.detail}</div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <MetricStat label="Total views" value={compactNumber(report.video.views)} icon={Eye} detail="YouTube-reported lifetime total" />
@@ -391,7 +415,7 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
                       <div><div className="text-xs font-semibold leading-relaxed text-[#e6eaf8]">{finding.title}</div><p className="mt-1 text-[11px] leading-[1.55] text-[#8e9bb4]">{finding.detail}</p></div>
                     </div>
                   ))}</div>
-                ) : <div className="flex flex-1 flex-col items-center justify-center py-6 text-center"><CheckCircle2 size={34} className="text-[#73d9bd]" /><p className="mt-3 text-sm text-[#cdd7e9]">No strong anomalies found</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-[#8996b0]">This does not establish that engagement is authentic.</p></div>}
+                ) : <div className="flex flex-1 flex-col items-center justify-center py-6 text-center"><CheckCircle2 size={34} className="text-[#73d9bd]" /><p className="mt-3 text-sm text-[#cdd7e9]">No strong signals in this sample</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-[#8996b0]">Ordinary ratios cannot rule out habitual inflation across the whole channel. More evidence may be needed.</p></div>}
                 <div className="mt-auto border-t border-[#2b344c] pt-4 text-[11px] leading-[1.6] text-[#8491ad]">Indicators are independent heuristics, not estimates of fake views or bot probability.</div>
               </div>
             </div>
@@ -405,7 +429,8 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
               <div className="panel p-5 sm:p-6"><h3 className="text-sm font-semibold text-white">Comments flagged for review</h3><AuditRing flagged={report.audit.flaggedCount} sampled={report.audit.sampled} /><div className="mt-1 text-center text-xs text-[#97a3bd]">{fullNumber(report.audit.flaggedCount)} / {fullNumber(report.audit.sampled)} examined</div><div className="mt-4 border-t border-[#2b344b] pt-3 text-center text-[11px] text-[#7f8da8]">Threshold: 3+ heuristic points, not a bot classification</div></div>
               <div className="panel p-5 sm:p-6"><h3 className="text-sm font-semibold text-white">Pattern breakdown</h3><p className="mt-1 text-[11px] text-[#8694b0]">Signals can overlap on the same comment.</p><div className="mt-5 space-y-4">{[
                 { label: "Repeated wording", count: report.audit.repeatedCount, color: "bg-[#ff8e7d]" },
-                { label: "Generic responses", count: report.audit.genericCount, color: "bg-[#9a9cfb]" },
+                { label: "Generic praise", count: report.audit.praiseCount, color: "bg-[#9a9cfb]" },
+                { label: "Praise-wave members", count: report.audit.praiseWaveCount, color: "bg-[#68e9ef]" },
                 { label: "Contextual bursts", count: report.audit.burstCount, color: "bg-[#f1c081]" },
                 { label: "New accounts", count: report.audit.newAccountCount, color: "bg-[#76dbbc]" },
               ].map((item) => <div key={item.label}><div className="mb-1.5 flex justify-between text-xs"><span className="text-[#b9c3da]">{item.label}</span><span className="tabular-nums text-white">{item.count}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#303850]"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${report.audit.sampled ? Math.min(100, (item.count / report.audit.sampled) * 100) : 0}%` }} /></div></div>)}</div><div className="mt-5 text-[11px] text-[#8190a9]">Account metadata available for {report.audit.metadataAvailableCount} / {report.audit.sampled} comments.</div></div>
@@ -443,7 +468,7 @@ export default function Dashboard({ initialReport }: { initialReport: AnalysisRe
               {sortedHistory.length > historyShown && <button className="flex w-full items-center justify-center gap-2 border-t border-[#2a3249] py-4 text-xs font-semibold text-[#b6b9fc] hover:bg-[#212a43]" onClick={() => setHistoryShown((previous) => previous + 15)}>Show more uploads <ChevronDown size={14} /></button>}
             </div>
           </section>
-          <footer className="mt-14 flex flex-col justify-between gap-4 border-t border-[#2b344b] pt-7 text-[11px] leading-relaxed text-[#8290aa] sm:flex-row"><p>Bot Checker · Public data, explainable heuristics, human judgment.</p><div className="flex flex-wrap gap-4"><Link href="/methodology" className="hover:text-white">Methodology</Link><Link href="/privacy" className="hover:text-white">Privacy</Link><a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noreferrer" className="hover:text-white">YouTube API policies ↗</a></div></footer>
+          <footer className="mt-14 flex flex-col justify-between gap-4 border-t border-[#2b344b] pt-7 text-[11px] leading-relaxed text-[#8290aa] sm:flex-row"><p>Veyra · See the signals. Question the numbers. · Investigative research preview.</p><div className="flex flex-wrap gap-4"><Link href="/methodology" className="hover:text-white">Methodology</Link><Link href="/privacy" className="hover:text-white">Privacy</Link><a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noreferrer" className="hover:text-white">YouTube API policies ↗</a></div></footer>
         </main>
       </div>
     </div>

@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Privacy" };
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[#111626] px-5 py-10 text-[#e9edf9] sm:px-10">
+    <main className="min-h-screen bg-[#050912] px-5 py-10 text-[#e9edf9] sm:px-10">
       <div className="mx-auto max-w-3xl">
         <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-[#bfc2ff] hover:text-white"><ArrowLeft size={15} />Back to dashboard</Link>
         <div className="mt-12 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[.18em] text-[#b4aeeb]"><ShieldCheck size={17} />Privacy</div>

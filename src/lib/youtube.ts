@@ -2,7 +2,7 @@ import { createReport } from "./analysis";
 import type { AnalysisReport, ChannelRecord, CommentRecord, VideoRecord } from "./types";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
-const USER_AGENT = "BotChecker/0.1 (YouTube engagement research MVP)";
+const USER_AGENT = "Veyra/0.2 (YouTube engagement research MVP)";
 
 interface YouTubeVideo {
   id: string;

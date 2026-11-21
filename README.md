@@ -1,6 +1,6 @@
-# Bot Checker
+# Veyra
 
-A complete, local-first MVP for examining unusual YouTube engagement and comment patterns. Built with **Next.js App Router, React 19, TypeScript, and Tailwind CSS v4**. The app ships with a polished dashboard and a fully functional **fictional demo dataset**, so it is usable immediately without credentials.
+A local-first research MVP for examining unusual YouTube engagement and comment patterns. Built with **Next.js App Router, React 19, TypeScript, and Tailwind CSS v4**. The app ships with a polished dashboard and a fully functional **fictional demo dataset**, so it is usable immediately without credentials.
 
 > **Research aid, not a fraud detector.** Public YouTube data cannot prove that individual views or comments are purchased. This project surfaces reviewable, uncalibrated anomalies and does not assign bot probabilities.
 
@@ -72,6 +72,12 @@ src/
     format.ts               UI formatting
     types.ts                Shared interfaces
 ```
+
+## Veyra Score and the detection model
+
+The new **Veyra Score** summarizes three separate anomaly categories: engagement consistency (35%), comment integrity (45%), and coordination signals (20%). **100 does not mean 100% authentic**; it means relatively few anomalies were seen in the available evidence. Missing signals are not automatically set to 100, and Veyra displays `—` for the overall score when evidence coverage is insufficient. The score is a local, exploratory index with uncalibrated weights, not a fraud probability. The score and the other derived analytics require the relevant YouTube approval before a public release.
+
+Generic AI-style praise is treated as a weak text pattern; a large cross-account praise wave or dense, generic burst prompts human review. This is not an AI-authorship classifier, and genuine fans can write generic praise.
 
 ## How the scoring works
 

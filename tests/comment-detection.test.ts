@@ -53,3 +53,28 @@ describe("comment heuristics", () => {
     expect(audit.burstCount).toBe(0);
   });
 });
+
+describe("contextual generic praise", () => {
+  it("recognizes long AI-style compliments as weak generic signals", () => {
+    const audit = analyzeComments([make("solo", "What an incredibly insightful and thought provoking video. Your perspective is truly amazing and the content is always so valuable and inspiring.")], 1);
+    expect(audit.genericCount).toBe(1);
+    expect(audit.flaggedCount).toBe(0);
+  });
+
+  it("highlights a large cross-account praise wave without claiming bots", () => {
+    const comments = Array.from({ length: 24 }, (_, index) => ({
+      ...make(`p${index}`, index % 2
+        ? "This is such an incredible video, what an inspiring and thoughtful perspective!"
+        : "Absolutely amazing content, always delivering insightful and valuable perspectives!"),
+      publishedAt: new Date(Date.parse("2026-10-01T00:00:00Z") + index * 20_000).toISOString(),
+    }));
+    const audit = analyzeComments(comments, 24);
+    expect(audit.praiseWaveCount).toBeGreaterThanOrEqual(12);
+    expect(audit.flaggedCount).toBeGreaterThanOrEqual(12);
+  });
+
+  it("does not mistake a specific positive observation for generic praise", () => {
+    const audit = analyzeComments([make("specific", "Great breakdown of the audience retention graph around 6 minutes, but I disagree with the conclusion.")], 1);
+    expect(audit.genericCount).toBe(0);
+  });
+});

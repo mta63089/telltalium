@@ -1,4 +1,5 @@
 import { analyzeComments } from "./comment-detection";
+import { calculateVeyraScore } from "./score";
 import type {
   AnalysisReport,
   ChannelRecord,
@@ -79,15 +80,27 @@ export function createReport(input: {
   analyzedAt?: string;
 }): AnalysisReport {
   const { mode, channel, video, history, comments } = input;
+  const videoAgeDays = (Date.now() - Date.parse(video.publishedAt)) / 86_400_000;
+  // Very fresh videos cannot reasonably be compared with mature lifetime totals.
+  const comparisonHistory = videoAgeDays >= 7 ? history : [];
   const comparisons = Object.fromEntries(
     metricDefinitions.map(({ key, label, value }) => [
       key,
-      compareMetric(key, label, value(video), history.map(value)),
+      compareMetric(key, label, value(video), comparisonHistory.map(value)),
     ]),
   ) as Record<MetricKey, MetricComparison>;
 
   const audit = analyzeComments(comments, video.comments, input.commentsUnavailableReason ?? null);
   const findings: Finding[] = [];
+  if (videoAgeDays < 7) {
+    findings.push({
+      id: "video-too-new",
+      title: "Video is too new for lifetime-ratio benchmarking",
+      detail: "The selected upload is less than seven days old. Channel-ratio comparison is withheld until at least a basic age threshold is met; true age-matched snapshots are not yet implemented.",
+      level: "insufficient",
+      category: "coverage",
+    });
+  }
 
   for (const metric of Object.values(comparisons)) {
     if (metric.finding === "normal") continue;
@@ -119,6 +132,15 @@ export function createReport(input: {
       category: "comments",
     });
   }
+  if (audit.praiseWaveCount >= 8) {
+    findings.push({
+      id: "praise-wave",
+      title: "Concentrated generic praise deserves review",
+      detail: `${audit.praiseWaveCount} comments form a large or time-concentrated wave of non-specific positive language from distinct authors. This can also reflect organic fan enthusiasm, and is not AI authorship proof.`,
+      level: "watch",
+      category: "comments",
+    });
+  }
   if (audit.clusterCount > 0) {
     findings.push({
       id: "text-clusters",
@@ -140,7 +162,7 @@ export function createReport(input: {
   if (!findings.some((item) => item.level === "elevated" || item.level === "watch")) {
     findings.push({
       id: "no-major-outliers",
-      title: "No major anomalies detected in available signals",
+      title: "No major ratio or comment anomalies detected in this sample",
       detail: "This does not rule out inorganic activity. Public engagement metrics alone cannot verify individual views.",
       level: "normal",
       category: "engagement",
@@ -159,7 +181,8 @@ export function createReport(input: {
     comparisons,
     audit,
     findings,
-    historicalCaveat: "Historical ratios are based on current lifetime totals, not matched video ages. Shorts classification uses duration as an approximation. Deviations are exploratory and cannot establish fake views.",
+    veyraScore: calculateVeyraScore(comparisons, audit),
+    historicalCaveat: "Historical ratios are based on current lifetime totals, not matched video ages; uploads younger than seven days have no lifetime-ratio comparison. Shorts classification uses duration as an approximation. Deviations are exploratory and cannot establish fake views.",
     cohortDescription: input.cohortDescription ?? "Recent public uploads of comparable duration and category; at least seven days old.",
   };
 }
