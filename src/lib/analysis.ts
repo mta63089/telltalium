@@ -18,8 +18,12 @@ export function median(values: number[]): number | null {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-export function ratio(numerator: number | null, denominator: number | null): number | null {
-  if (numerator === null || denominator === null || denominator <= 0) return null;
+export function ratio(
+  numerator: number | null,
+  denominator: number | null,
+): number | null {
+  if (numerator === null || denominator === null || denominator <= 0)
+    return null;
   return (numerator / denominator) * 100;
 }
 
@@ -28,9 +32,21 @@ const metricDefinitions: Array<{
   label: string;
   value: (record: VideoRecord) => number | null;
 }> = [
-  { key: "likeRate", label: "Like-to-view rate", value: (v) => ratio(v.likes, v.views) },
-  { key: "commentRate", label: "Comment-to-view rate", value: (v) => ratio(v.comments, v.views) },
-  { key: "commentsPerLike", label: "Comments per like", value: (v) => ratio(v.comments, v.likes) },
+  {
+    key: "likeRate",
+    label: "Like-to-view rate",
+    value: (v) => ratio(v.likes, v.views),
+  },
+  {
+    key: "commentRate",
+    label: "Comment-to-view rate",
+    value: (v) => ratio(v.comments, v.views),
+  },
+  {
+    key: "commentsPerLike",
+    label: "Comments per like",
+    value: (v) => ratio(v.comments, v.likes),
+  },
 ];
 
 export function compareMetric(
@@ -39,34 +55,62 @@ export function compareMetric(
   current: number | null,
   historical: Array<number | null>,
 ): MetricComparison {
-  const values = historical.filter((value): value is number => value !== null && Number.isFinite(value));
+  const values = historical.filter(
+    (value): value is number => value !== null && Number.isFinite(value),
+  );
   const baseline = values.length >= 5 ? median(values) : null;
-  const deviation = baseline !== null && baseline > 0 && current !== null
-    ? ((current - baseline) / baseline) * 100
-    : null;
-  const mad = baseline !== null ? median(values.map((value) => Math.abs(value - baseline))) : null;
-  const robustZ = current !== null && baseline !== null && mad !== null && mad > 0
-    ? (current - baseline) / (1.4826 * mad)
-    : null;
+  const deviation =
+    baseline !== null && baseline > 0 && current !== null
+      ? ((current - baseline) / baseline) * 100
+      : null;
+  const mad =
+    baseline !== null
+      ? median(values.map((value) => Math.abs(value - baseline)))
+      : null;
+  const robustZ =
+    current !== null && baseline !== null && mad !== null && mad > 0
+      ? (current - baseline) / (1.4826 * mad)
+      : null;
 
   let finding: FindingLevel = "insufficient";
   if (current !== null && baseline !== null) {
-    if (deviation !== null && Math.abs(deviation) >= 60 &&
-      (robustZ === null || Math.abs(robustZ) >= 3)) {
+    if (
+      deviation !== null &&
+      Math.abs(deviation) >= 60 &&
+      (robustZ === null || Math.abs(robustZ) >= 3)
+    ) {
       finding = "elevated";
-    } else if (deviation !== null && Math.abs(deviation) >= 35 &&
-      (robustZ === null || Math.abs(robustZ) >= 2)) {
+    } else if (
+      deviation !== null &&
+      Math.abs(deviation) >= 35 &&
+      (robustZ === null || Math.abs(robustZ) >= 2)
+    ) {
       finding = "watch";
     } else {
       finding = "normal";
     }
   }
 
-  return { key, label, current, median: baseline, deviation, robustZ, sampleSize: values.length, finding };
+  return {
+    key,
+    label,
+    current,
+    median: baseline,
+    deviation,
+    robustZ,
+    sampleSize: values.length,
+    finding,
+  };
 }
 
 function severityOrder(level: FindingLevel): number {
-  return level === "elevated" ? 0 : level === "watch" ? 1 : level === "insufficient" ? 2 : 3;
+  return level === "elevated"
+    ? 0
+    : level === "watch"
+      ? 1
+      : level === "insufficient"
+        ? 2
+        : 3;
 }
 
 export function createReport(input: {
@@ -80,7 +124,8 @@ export function createReport(input: {
   analyzedAt?: string;
 }): AnalysisReport {
   const { mode, channel, video, history, comments } = input;
-  const videoAgeDays = (Date.now() - Date.parse(video.publishedAt)) / 86_400_000;
+  const videoAgeDays =
+    (Date.now() - Date.parse(video.publishedAt)) / 86_400_000;
   // Very fresh videos cannot reasonably be compared with mature lifetime totals.
   const comparisonHistory = videoAgeDays >= 7 ? history : [];
   const comparisons = Object.fromEntries(
@@ -90,13 +135,18 @@ export function createReport(input: {
     ]),
   ) as Record<MetricKey, MetricComparison>;
 
-  const audit = analyzeComments(comments, video.comments, input.commentsUnavailableReason ?? null);
+  const audit = analyzeComments(
+    comments,
+    video.comments,
+    input.commentsUnavailableReason ?? null,
+  );
   const findings: Finding[] = [];
   if (videoAgeDays < 7) {
     findings.push({
       id: "video-too-new",
       title: "Video is too new for lifetime-ratio benchmarking",
-      detail: "The selected upload is less than seven days old. Channel-ratio comparison is withheld until at least a basic age threshold is met; true age-matched snapshots are not yet implemented.",
+      detail:
+        "The selected upload is less than seven days old. Channel-ratio comparison is withheld until at least a basic age threshold is met; true age-matched snapshots are not yet implemented.",
       level: "insufficient",
       category: "coverage",
     });
@@ -123,7 +173,11 @@ export function createReport(input: {
     });
   }
 
-  if (audit.sampled > 0 && audit.flaggedCount / audit.sampled >= 0.15 && audit.flaggedCount >= 5) {
+  if (
+    audit.sampled > 0 &&
+    audit.flaggedCount / audit.sampled >= 0.15 &&
+    audit.flaggedCount >= 5
+  ) {
     findings.push({
       id: "flagged-comments",
       title: "Multiple comments contain overlapping signals",
@@ -154,16 +208,23 @@ export function createReport(input: {
     findings.push({
       id: "comments-unavailable",
       title: "Comment patterns could not be assessed",
-      detail: audit.unavailableReason ?? "The API returned no public top-level comments.",
+      detail:
+        audit.unavailableReason ??
+        "The API returned no public top-level comments.",
       level: "insufficient",
       category: "coverage",
     });
   }
-  if (!findings.some((item) => item.level === "elevated" || item.level === "watch")) {
+  if (
+    !findings.some(
+      (item) => item.level === "elevated" || item.level === "watch",
+    )
+  ) {
     findings.push({
       id: "no-major-outliers",
       title: "No major ratio or comment anomalies detected in this sample",
-      detail: "This does not rule out inorganic activity. Public engagement metrics alone cannot verify individual views.",
+      detail:
+        "This does not rule out inorganic activity. Public engagement metrics alone cannot verify individual views.",
       level: "normal",
       category: "engagement",
     });
@@ -182,7 +243,10 @@ export function createReport(input: {
     audit,
     findings,
     veyraScore: calculateVeyraScore(comparisons, audit),
-    historicalCaveat: "Historical ratios are based on current lifetime totals, not matched video ages; uploads younger than seven days have no lifetime-ratio comparison. Shorts classification uses duration as an approximation. Deviations are exploratory and cannot establish fake views.",
-    cohortDescription: input.cohortDescription ?? "Recent public uploads of comparable duration and category; at least seven days old.",
+    historicalCaveat:
+      "Historical ratios are based on current lifetime totals, not matched video ages; uploads younger than seven days have no lifetime-ratio comparison. Shorts classification uses duration as an approximation. Deviations are exploratory and cannot establish fake views.",
+    cohortDescription:
+      input.cohortDescription ??
+      "Recent public uploads of comparable duration and category; at least seven days old.",
   };
 }

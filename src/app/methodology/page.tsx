@@ -1,6 +1,6 @@
+import { DocsShell } from "@/components/docs-shell";
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileSearch, Info } from "lucide-react";
 
 export const metadata: Metadata = { title: "Methodology" };
 
@@ -45,17 +45,42 @@ const sections = [
 
 export default function MethodologyPage() {
   return (
-    <main className="min-h-screen bg-[#050912] px-5 py-10 text-[#e9edf9] sm:px-10">
-      <div className="mx-auto max-w-3xl">
-        <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-[#bfc2ff] hover:text-white"><ArrowLeft size={15} />Back to dashboard</Link>
-        <div className="mt-12 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[.18em] text-[#b4aeeb]"><FileSearch size={17} />Transparency first</div>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">How Veyra works</h1>
-        <p className="mt-4 text-sm leading-8 text-[#a1aec9]">Anomaly detection should make evidence clearer, not turn assumptions into allegations. These are the actual rules used by this MVP.</p>
-        <div className="mt-10 space-y-4">{sections.map((section, index) => (
-          <section key={section.title} className="panel p-6"><div className="mb-2 flex items-center gap-3"><span className="text-[11px] font-semibold text-[#9895e9]">{String(index + 1).padStart(2, "0")}</span><h2 className="text-base font-semibold text-white">{section.title}</h2></div><p className="text-sm leading-[1.85] text-[#9aa8c2]">{section.body}</p></section>
-        ))}</div>
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#454661] bg-[#262943] p-5"><Info size={18} className="mt-0.5 shrink-0 text-[#c6b8ff]" /><div className="text-sm leading-7 text-[#bdc9e0]">API policy references: <a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#c6c4ff] hover:underline">Developer Policies <ExternalLink size={12}/></a> and <a href="https://developers.google.com/youtube/terms/derived-metrics-policy" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#c6c4ff] hover:underline">Derived Metrics Policy <ExternalLink size={12}/></a>.</div></div>
+    <DocsShell
+      index="M"
+      kicker="TRANSPARENCY FIRST"
+      title="Inside the signal"
+      introduction="A transparent investigation requires transparent methods. Every heuristic is documented, and uncertainty is part of the report."
+    >
+      <div className="docs-section-list">
+        {sections.map((section, index) => (
+          <section key={section.title} className="docs-section">
+            <div className="docs-section-index">
+              {String(index + 1).padStart(2, "0")}
+            </div>
+            <div>
+              <h2>{section.title}</h2>
+              <p>{section.body}</p>
+            </div>
+          </section>
+        ))}
       </div>
-    </main>
+      <div className="docs-reference">
+        <strong>OFFICIAL YOUTUBE DOCUMENTATION</strong>
+        <a
+          href="https://developers.google.com/youtube/terms/developer-policies"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Developer Policies <ExternalLink size={13} />
+        </a>
+        <a
+          href="https://developers.google.com/youtube/terms/derived-metrics-policy"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Derived Metrics Policy <ExternalLink size={13} />
+        </a>
+      </div>
+    </DocsShell>
   );
 }

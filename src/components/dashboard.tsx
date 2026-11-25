@@ -1,476 +1,1218 @@
 "use client";
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
-import Link from "next/link";
+import { ratio } from "@/lib/analysis";
 import {
-  Activity,
-  AlertCircle,
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
-  BarChart3,
-  CheckCircle2,
-  ChevronDown,
-  Clock3,
-  Download,
-  ExternalLink,
-  Eye,
-  FileSearch,
-  Flag,
-  Info,
-  LayoutDashboard,
-  Link2,
-  LoaderCircle,
-  MessageCircle,
-  Play,
-  Search,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  X,
-} from "lucide-react";
-import { ActivityBars, AuditRing, TimelineChart } from "./charts";
-import { compactNumber, formatDate, fullNumber, percentage, relativeDate, signedPercentage } from "@/lib/format";
+  compactNumber,
+  formatDate,
+  fullNumber,
+  percentage,
+  relativeDate,
+  signedPercentage,
+} from "@/lib/format";
 import type {
   AnalysisReport,
+  CommentSignal,
   FindingLevel,
   MetricComparison,
   MetricKey,
   ScoredComment,
-  CommentSignal,
   VideoRecord,
 } from "@/lib/types";
-import { ratio } from "@/lib/analysis";
+import { parseVideoId } from "@/lib/video-url";
+import {
+  ArrowDown,
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  Fingerprint,
+  LoaderCircle,
+  MoveUpRight,
+  Play,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
+import { ActivityBars, TimelineChart } from "./charts";
+import { VeyraMark } from "./veyra-mark";
 
 const SIGNAL_LABELS: Record<CommentSignal, string> = {
   "repeated-text": "Repeated wording",
   "generic-language": "Generic language",
-  "burst-activity": "Coordinated-looking burst",
+  "burst-activity": "Activity burst",
   "new-account": "New account",
-  "username-pattern": "Generated-looking name",
+  "username-pattern": "Name pattern",
   "external-link": "External link",
-  "praise-template": "Generic praise template",
-  "praise-wave": "Generic praise saturation",
+  "praise-template": "Templated praise",
+  "praise-wave": "Praise saturation",
 };
 
-const CHART_OPTIONS: Array<{ value: MetricKey; label: string }> = [
-  { value: "likeRate", label: "Like rate" },
-  { value: "commentRate", label: "Comment rate" },
-  { value: "commentsPerLike", label: "Comments / likes" },
+const METRICS: Array<{ key: MetricKey; label: string }> = [
+  { key: "likeRate", label: "Like / view" },
+  { key: "commentRate", label: "Comment / view" },
+  { key: "commentsPerLike", label: "Comment / like" },
 ];
 
-function findingColor(level: FindingLevel) {
-  if (level === "elevated") return "coral";
-  if (level === "watch") return "amber";
-  if (level === "normal") return "mint";
-  return "muted";
-}
-
-function severityLabel(level: FindingLevel) {
+function levelText(level: FindingLevel): string {
   if (level === "elevated") return "Elevated anomaly";
-  if (level === "watch") return "Worth reviewing";
-  if (level === "normal") return "Within baseline";
+  if (level === "watch") return "Investigate";
+  if (level === "normal") return "No major outlier";
   return "Limited evidence";
 }
 
-function SeverityPill({ level }: { level: FindingLevel }) {
-  return <span className={`severity severity-${findingColor(level)}`}>{severityLabel(level)}</span>;
+function Verdict({ level }: { level: FindingLevel }) {
+  return (
+    <span className={`verdict verdict-${level}`}>
+      <span className="verdict-dot" />
+      {levelText(level)}
+    </span>
+  );
 }
 
-function SectionTitle({ kicker, title, note }: { kicker: string; title: string; note?: string }) {
+function Eyebrow({
+  number,
+  children,
+}: {
+  number: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mb-5">
-      <div className="text-[10px] font-semibold uppercase tracking-[.2em] text-[#8792b1]">{kicker}</div>
-      <h2 className="mt-1 text-xl font-semibold tracking-tight text-white sm:text-2xl">{title}</h2>
-      {note && <p className="mt-1.5 text-sm leading-relaxed text-[#8792ab]">{note}</p>}
+    <div className="section-eyebrow">
+      <span className="section-index">{number}</span>
+      <span>{children}</span>
+      <span className="section-rule" />
     </div>
   );
 }
 
-function MetricStat({ label, value, icon: Icon, detail }: { label: string; value: string; icon: typeof Eye; detail: string }) {
+function SectionHeading({
+  number,
+  eyebrow,
+  title,
+  description,
+}: {
+  number: string;
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
   return (
-    <div className="panel flex min-w-0 items-start justify-between gap-3 p-5 sm:p-6">
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-[#99a4bd]">{label}</p>
-        <p className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{value}</p>
-        <p className="mt-2 text-xs text-[#7e8aa4]">{detail}</p>
+    <div className="section-heading reveal">
+      <Eyebrow number={number}>{eyebrow}</Eyebrow>
+      <h2>
+        {title}
+        <span className="accent-period">.</span>
+      </h2>
+      {description && <p>{description}</p>}
+    </div>
+  );
+}
+
+function SignalOrb() {
+  return (
+    <div className="signal-orb" aria-hidden="true">
+      <div className="orb-glow" />
+      <div className="orb-ring orb-ring-one" />
+      <div className="orb-ring orb-ring-two" />
+      <div className="orb-ring orb-ring-three" />
+      <div className="orb-axis orb-axis-x" />
+      <div className="orb-axis orb-axis-y" />
+      <div className="orb-scanner" />
+      <div className="orb-center">
+        <VeyraMark size={98} />
       </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#252d48] text-[#aab6f7]">
-        <Icon size={19} strokeWidth={1.8} />
+      <div className="orb-coordinate orb-coordinate-top">V/01 · SCANNING</div>
+      <div className="orb-coordinate orb-coordinate-bottom">
+        SIGNAL INTELLIGENCE / 2026
       </div>
     </div>
   );
 }
 
-function MetricComparisonCard({ metric }: { metric: MetricComparison }) {
-  const mine = metric.current ?? 0;
-  const baseline = metric.median ?? 0;
-  const scale = Math.max(mine, baseline, 0.01) * 1.25;
+function VideoPortrait({ report }: { report: AnalysisReport }) {
   return (
-    <div className="panel p-5">
-      <div className="mb-4 flex items-start justify-between gap-2">
-        <div className="text-sm font-medium text-[#cdd5eb]">{metric.label}</div>
-        {metric.deviation !== null && (
-          <span className={`flex items-center gap-1 text-xs font-medium ${metric.deviation < 0 ? "text-[#ffa18d]" : "text-[#a6b2ff]"}`}>
-            {metric.deviation < 0 ? <ArrowDownRight size={13} /> : <ArrowUpRight size={13} />}
-            {signedPercentage(metric.deviation)}
+    <div className="video-portrait reveal">
+      <div className="video-image-wrap">
+        {report.video.thumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={report.video.thumbnail}
+            alt="Video thumbnail"
+            referrerPolicy="no-referrer"
+            className="video-image"
+          />
+        ) : (
+          <div className="video-image-placeholder">
+            <Play size={35} />
+          </div>
+        )}
+        <div className="video-image-overlay">
+          <span>SELECTED MATERIAL</span>
+          <span>
+            {report.mode === "demo" ? "DEMO / 001" : `ID / ${report.video.id}`}
           </span>
+        </div>
+      </div>
+      <div className="video-portrait-body">
+        <div className="micro-label">NOW UNDER REVIEW</div>
+        <h3>{report.video.title}</h3>
+        <div className="video-channel">
+          <span>{report.channel.title}</span>
+          <span>↗</span>
+          <span>{formatDate(report.video.publishedAt)}</span>
+        </div>
+        {report.mode === "live" && (
+          <a
+            className="text-link"
+            href={`https://www.youtube.com/watch?v=${encodeURIComponent(report.video.id)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View original on YouTube <ExternalLink size={13} />
+          </a>
         )}
       </div>
-      <div className="text-3xl font-semibold tracking-tight text-white">{percentage(metric.current)}</div>
-      <div className="mt-5 space-y-3">
-        <div>
-          <div className="mb-1.5 flex justify-between text-[11px] text-[#99a4bd]"><span>Selected video</span><span>{percentage(metric.current)}</span></div>
-          <div className="h-2 overflow-hidden rounded-full bg-[#2a3149]"><div className="h-full rounded-full bg-[#fb8578]" style={{ width: `${(mine / scale) * 100}%` }} /></div>
-        </div>
-        <div>
-          <div className="mb-1.5 flex justify-between text-[11px] text-[#99a4bd]"><span>Channel median</span><span>{percentage(metric.median)}</span></div>
-          <div className="h-2 overflow-hidden rounded-full bg-[#2a3149]"><div className="h-full rounded-full bg-[#949bfa]" style={{ width: `${(baseline / scale) * 100}%` }} /></div>
-        </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#2a3148] pt-4 text-[11px] text-[#8994ae]">
-        <span>{metric.sampleSize} usable comparisons</span>
-        <SeverityPill level={metric.finding} />
-      </div>
     </div>
   );
 }
 
-function InitialAvatar({ name, avatar, size = "md" }: { name: string; avatar: string | null; size?: "sm" | "md" }) {
-  const dimension = size === "sm" ? "h-9 w-9 text-xs" : "h-12 w-12 text-sm";
-  return avatar ? (
-    // Remote YouTube avatar is deliberately not proxied or cached by the application.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img alt="" src={avatar} className={`shrink-0 rounded-full object-cover ${dimension}`} referrerPolicy="no-referrer" />
-  ) : (
-    <div className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#665ca7] to-[#384c79] font-semibold text-white ${dimension}`}>
-      {name.slice(0, 2).toUpperCase()}
-    </div>
-  );
-}
-
-function CommentItem({ comment, mode, videoId }: { comment: ScoredComment; mode: "live" | "demo"; videoId: string }) {
+function MetricComparisonRow({
+  metric,
+  index,
+}: {
+  metric: MetricComparison;
+  index: number;
+}) {
+  const current = metric.current ?? 0;
+  const baseline = metric.median ?? 0;
+  const max = Math.max(current, baseline, 0.00001) * 1.12;
   return (
-    <article className="border-b border-[#262e44] px-5 py-4 last:border-b-0 sm:px-6">
-      <div className="flex gap-3">
-        <InitialAvatar name={comment.author} avatar={comment.authorAvatar} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {mode === "live" && comment.authorChannelId ? (
-                <a className="text-sm font-semibold text-[#e6eaf6] hover:underline" href={`https://www.youtube.com/channel/${encodeURIComponent(comment.authorChannelId)}`} target="_blank" rel="noreferrer">{comment.author}</a>
-              ) : <span className="text-sm font-semibold text-[#e6eaf6]">{comment.author}</span>}
-              {comment.flagged && <span className="rounded-md bg-[#4a2d33] px-2 py-0.5 text-[10px] font-semibold text-[#ffad9f]">Review</span>}
-            </div>
-            <span className="text-[11px] text-[#8791aa]">{relativeDate(comment.publishedAt)}</span>
+    <div
+      className="metric-comparison-row reveal"
+      style={{ "--reveal-delay": `${index * 70}ms` } as CSSProperties}
+    >
+      <div className="metric-comparison-name">
+        <span className="small-counter">0{index + 1}</span>
+        <h3>{metric.label}</h3>
+        <Verdict level={metric.finding} />
+      </div>
+      <div className="metric-comparison-bars">
+        <div className="comparison-track">
+          <span>THIS VIDEO</span>
+          <div className="bar-back">
+            <div
+              className="bar-fill bar-fill-current"
+              style={{ width: `${(current / max) * 100}%` }}
+            />
           </div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-[1.7] text-[#bec7dd]">{comment.text}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {comment.signals.length > 0 ? comment.signals.map((signal) => (
-              <span className={`signal-chip ${signal === "repeated-text" ? "signal-chip-strong" : ""}`} key={signal}>{SIGNAL_LABELS[signal]}</span>
-            )) : <span className="text-[11px] text-[#71809d]">No heuristic flags</span>}
-            {comment.accountCreatedAt && <span className="ml-1 text-[10px] text-[#73809b]">Account created {formatDate(comment.accountCreatedAt)}</span>}
-            {mode === "live" && (
-              <a title="Open comment on YouTube" className="ml-auto text-[#8897be] transition hover:text-white" href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&lc=${encodeURIComponent(comment.id)}`} target="_blank" rel="noreferrer"><ExternalLink size={14} /></a>
-            )}
+          <b>{percentage(metric.current)}</b>
+        </div>
+        <div className="comparison-track">
+          <span>CHANNEL MEDIAN</span>
+          <div className="bar-back">
+            <div
+              className="bar-fill bar-fill-median"
+              style={{ width: `${(baseline / max) * 100}%` }}
+            />
           </div>
+          <b>{percentage(metric.median)}</b>
         </div>
       </div>
+      <div className="metric-comparison-delta">
+        {metric.deviation === null ? (
+          <span>—</span>
+        ) : (
+          <>
+            <span
+              className={
+                metric.deviation < 0 ? "delta-negative" : "delta-positive"
+              }
+            >
+              {metric.deviation < 0 ? (
+                <ArrowDownRight size={18} />
+              ) : (
+                <ArrowUpRight size={18} />
+              )}
+              {signedPercentage(metric.deviation)}
+            </span>
+            <small>vs channel</small>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CommentCard({
+  comment,
+  mode,
+  videoId,
+}: {
+  comment: ScoredComment;
+  mode: "live" | "demo";
+  videoId: string;
+}) {
+  return (
+    <article className="comment-entry">
+      <div className="comment-heading">
+        <div className="comment-author">
+          <span className="comment-avatar">
+            {comment.author.slice(0, 1).toUpperCase()}
+          </span>
+          <span>{comment.author}</span>
+          {comment.flagged && (
+            <span className="comment-review-tag">REVIEW</span>
+          )}
+        </div>
+        <span className="comment-date">
+          {relativeDate(comment.publishedAt)}
+        </span>
+      </div>
+      <p className="comment-content">{comment.text}</p>
+      <div className="comment-footer">
+        <div className="comment-tags">
+          {comment.signals.length ? (
+            comment.signals.map((signal) => (
+              <span
+                key={signal}
+                className={
+                  signal === "repeated-text" || signal === "praise-wave"
+                    ? "signal-tag strong"
+                    : "signal-tag"
+                }
+              >
+                {SIGNAL_LABELS[signal]}
+              </span>
+            ))
+          ) : (
+            <span className="comment-muted">No review signals</span>
+          )}
+        </div>
+        {mode === "live" && (
+          <a
+            className="comment-open"
+            href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&lc=${encodeURIComponent(comment.id)}`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open comment by ${comment.author} on YouTube`}
+          >
+            <MoveUpRight size={16} />
+          </a>
+        )}
+      </div>
+      {comment.accountCreatedAt && (
+        <div className="comment-extra">
+          ACCOUNT CREATED {formatDate(comment.accountCreatedAt)}
+        </div>
+      )}
     </article>
   );
 }
 
-function HistoryRow({ video, index, demo }: { video: VideoRecord; index: number; demo: boolean }) {
+function HistoryRow({
+  video,
+  index,
+  mode,
+}: {
+  video: VideoRecord;
+  index: number;
+  mode: "live" | "demo";
+}) {
   return (
-    <tr className="border-t border-[#263048] transition hover:bg-[#202840]/60">
-      <td className="px-5 py-3.5 text-xs text-[#72809e]">{String(index + 1).padStart(2, "0")}</td>
-      <td className="max-w-[250px] px-3 py-3.5">
-        {demo ? <span className="block truncate text-[13px] font-medium text-[#cbd4e9]">{video.title}</span> : (
-          <a className="block truncate text-[13px] font-medium text-[#cbd4e9] hover:text-white hover:underline" href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`} target="_blank" rel="noreferrer">{video.title}</a>
-        )}
-        <span className="mt-1 block text-[11px] text-[#73809b]">{formatDate(video.publishedAt)}</span>
+    <tr className="history-row">
+      <td>
+        <span className="history-number">
+          {String(index + 1).padStart(2, "0")}
+        </span>
       </td>
-      <td className="px-3 py-3.5 text-right text-[13px] tabular-nums text-[#bec8df]">{fullNumber(video.views)}</td>
-      <td className="px-3 py-3.5 text-right text-[13px] tabular-nums text-[#bec8df]">{percentage(ratio(video.likes, video.views))}</td>
-      <td className="px-5 py-3.5 text-right text-[13px] tabular-nums text-[#bec8df]">{percentage(ratio(video.comments, video.views))}</td>
+      <td>
+        <div className="history-title-cell">
+          {mode === "live" ? (
+            <Link
+              href={`/analyze/${encodeURIComponent(video.id)}`}
+              className="history-video-link"
+              title="Open Veyra analysis"
+            >
+              <span>{video.title}</span>
+              <ArrowUpRight size={16} aria-hidden />
+            </Link>
+          ) : (
+            <span
+              className="history-video-demo"
+              title="Fictional demo video; live analysis unavailable"
+            >
+              {video.title}
+            </span>
+          )}
+          <small>
+            {formatDate(video.publishedAt)}
+            {mode === "demo" ? " · Fictional" : ""}
+          </small>
+        </div>
+      </td>
+      <td className="numeric">{fullNumber(video.views)}</td>
+      <td className="numeric">{percentage(ratio(video.likes, video.views))}</td>
+      <td className="numeric">
+        {percentage(ratio(video.comments, video.views))}
+      </td>
     </tr>
   );
 }
 
-export default function Dashboard({ initialReport }: { initialReport: AnalysisReport }) {
-  const [report, setReport] = useState<AnalysisReport>(initialReport);
+export default function Dashboard({
+  initialReport,
+  initialVideoId,
+}: {
+  initialReport: AnalysisReport | null;
+  initialVideoId?: string;
+}) {
+  const router = useRouter();
+  const [report, setReport] = useState<AnalysisReport | null>(initialReport);
   const [url, setUrl] = useState("");
-  const [working, setWorking] = useState(false);
+  const [working, setWorking] = useState(Boolean(initialVideoId));
   const [error, setError] = useState<string | null>(null);
   const [metric, setMetric] = useState<MetricKey>("likeRate");
-  const [commentFilter, setCommentFilter] = useState<"all" | "flagged" | "unflagged">("flagged");
+  const [commentFilter, setCommentFilter] = useState<
+    "flagged" | "all" | "unflagged"
+  >("flagged");
   const [commentQuery, setCommentQuery] = useState("");
-  const [commentsShown, setCommentsShown] = useState(6);
-  const [historyShown, setHistoryShown] = useState(7);
-  const [historySort, setHistorySort] = useState<"recent" | "views" | "like-rate">("recent");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [commentsShown, setCommentsShown] = useState(5);
+  const [historyShown, setHistoryShown] = useState(8);
+  const [historySort, setHistorySort] = useState<
+    "recent" | "views" | "like-rate"
+  >("recent");
+  const [scrollPercent, setScrollPercent] = useState(0);
+  const loadedId = useRef<string | null>(null);
 
-  async function analyze(mode: "demo" | "live") {
+  const load = useCallback(async (mode: "demo" | "live", videoId?: string) => {
     setError(null);
     setWorking(true);
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "demo" ? { mode: "demo" } : { mode: "live", url: url.trim() }),
+        body: JSON.stringify(
+          mode === "demo" ? { mode } : { mode, url: videoId },
+        ),
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
-        const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
-          ? payload.error
-          : "Could not complete the analysis.";
+        const message =
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : "We couldn't complete this investigation.";
         throw new Error(message);
       }
-      const nextReport = payload as AnalysisReport;
-      setReport(nextReport);
+      setReport(payload as AnalysisReport);
+      setMetric("likeRate");
       setCommentFilter("flagged");
       setCommentQuery("");
-      setCommentsShown(6);
-      setHistoryShown(7);
-      setMetric("likeRate");
-      document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setCommentsShown(5);
+      setHistoryShown(8);
+      requestAnimationFrame(() =>
+        document
+          .getElementById("results")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unknown error. Please retry.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "An unexpected error occurred.",
+      );
     } finally {
       setWorking(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!initialVideoId || loadedId.current === initialVideoId) return;
+    loadedId.current = initialVideoId;
+    void load("live", initialVideoId);
+  }, [initialVideoId, load]);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        setScrollPercent(
+          max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0,
+        );
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.add("motion-ready");
+    const elements = document.querySelectorAll<HTMLElement>(".reveal");
+    if (
+      !("IntersectionObserver" in window) ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      elements.forEach((element) => element.classList.add("is-visible"));
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+      },
+      { threshold: 0.08, rootMargin: "0px 0px -24px 0px" },
+    );
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [report]);
+
+  const filteredComments = useMemo(
+    () =>
+      (report?.audit.comments ?? []).filter((comment) => {
+        if (commentFilter === "flagged" && !comment.flagged) return false;
+        if (commentFilter === "unflagged" && comment.flagged) return false;
+        const query = commentQuery.trim().toLowerCase();
+        return (
+          !query ||
+          `${comment.author} ${comment.text}`.toLowerCase().includes(query)
+        );
+      }),
+    [report, commentFilter, commentQuery],
+  );
+
+  const sortedHistory = useMemo(
+    () =>
+      [...(report?.history ?? [])].sort((a, b) => {
+        if (historySort === "views") return (b.views ?? -1) - (a.views ?? -1);
+        if (historySort === "like-rate")
+          return (
+            (ratio(b.likes, b.views) ?? -1) - (ratio(a.likes, a.views) ?? -1)
+          );
+        return (
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
+      }),
+    [report, historySort],
+  );
+
+  function startAnalysis(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const id = parseVideoId(url);
+    if (!id) {
+      setError("Paste a valid YouTube video URL or 11-character video ID.");
+      return;
+    }
+    setError(null);
+    if (initialVideoId === id) {
+      void load("live", id);
+      return;
+    }
+    router.push(`/analyze/${encodeURIComponent(id)}`);
   }
-
-  const filteredComments = useMemo(() => report.audit.comments.filter((comment) => {
-    if (commentFilter === "flagged" && !comment.flagged) return false;
-    if (commentFilter === "unflagged" && comment.flagged) return false;
-    const query = commentQuery.toLowerCase().trim();
-    if (query && !`${comment.author} ${comment.text}`.toLowerCase().includes(query)) return false;
-    return true;
-  }), [report, commentFilter, commentQuery]);
-
-  const sortedHistory = useMemo(() => [...report.history].sort((a, b) => {
-    if (historySort === "views") return (b.views ?? -1) - (a.views ?? -1);
-    if (historySort === "like-rate") return (ratio(b.likes, b.views) ?? -1) - (ratio(a.likes, a.views) ?? -1);
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  }), [report, historySort]);
-
-  const important = report.findings.filter((finding) => finding.level === "elevated" || finding.level === "watch");
-  const overall: FindingLevel = important.some((finding) => finding.level === "elevated")
-    ? "elevated" : important.length > 0 ? "watch" : report.history.length < 5 ? "insufficient" : "normal";
 
   function downloadReport() {
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-    const objectUrl = URL.createObjectURL(blob);
+    if (!report) return;
+    const blob = new Blob([JSON.stringify(report, null, 2)], {
+      type: "application/json",
+    });
+    const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = objectUrl;
+    anchor.href = href;
     anchor.download = `veyra-${report.video.id}-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
-    URL.revokeObjectURL(objectUrl);
+    window.setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
 
+  const important =
+    report?.findings.filter(
+      (finding) => finding.level === "elevated" || finding.level === "watch",
+    ) ?? [];
+  const overall: FindingLevel = important.some(
+    (finding) => finding.level === "elevated",
+  )
+    ? "elevated"
+    : important.length > 0
+      ? "watch"
+      : (report?.history.length ?? 0) < 5
+        ? "insufficient"
+        : "normal";
+
   return (
-    <div className="app-shell min-h-screen text-[#edf0fc]">
-      <aside className="sidebar hidden w-[250px] shrink-0 flex-col border-r border-[#273047] px-5 pb-6 pt-7 lg:flex">
-        <Link href="/" className="flex items-center gap-3 px-2">
-          <span className="brand-mark"><span className="veyra-symbol" aria-hidden>V</span></span>
-          <span className="leading-tight"><strong className="block text-[17px] tracking-tight text-white">Veyra</strong><span className="block text-[10px] font-semibold uppercase tracking-[.2em] text-[#8190ae]">SIGNAL INTELLIGENCE</span></span>
-        </Link>
-        <div className="mt-12 px-3 text-[10px] font-semibold uppercase tracking-[.21em] text-[#65728f]">Workspace</div>
-        <nav className="mt-3 space-y-1.5">
-          {[
-            { href: "#results", label: "Overview", icon: LayoutDashboard },
-            { href: "#engagement", label: "Engagement", icon: BarChart3 },
-            { href: "#comments", label: "Comment audit", icon: MessageCircle },
-            { href: "#history", label: "Channel history", icon: Clock3 },
-          ].map(({ href, label, icon: Icon }, index) => (
-            <a href={href} key={href} className={`nav-link ${index === 0 ? "nav-link-active" : ""}`}><Icon size={17} strokeWidth={1.8} />{label}</a>
-          ))}
-        </nav>
-        <div className="mt-11 px-3 text-[10px] font-semibold uppercase tracking-[.21em] text-[#65728f]">Resources</div>
-        <nav className="mt-3 space-y-1.5">
-          <Link className="nav-link" href="/methodology"><FileSearch size={17} strokeWidth={1.8} />Methodology</Link>
-          <Link className="nav-link" href="/privacy"><ShieldCheck size={17} strokeWidth={1.8} />Privacy</Link>
-        </nav>
-        <div className="mt-auto rounded-2xl border border-[#333d59] bg-[#1e2741] px-4 py-4">
-          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-[#dae1f3]"><Sparkles size={15} className="text-[#b5b9ff]" /> Investigation toolkit</div>
-          <p className="text-[11px] leading-[1.65] text-[#96a3bd]">Spot unusual patterns. Understand the evidence. Avoid unsupported accusations.</p>
-          <a href="#analyzer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#c5c9ff]">New analysis <ArrowRight size={13} /></a>
+    <div className="veyra-app">
+      <div
+        className="scroll-progress"
+        style={{ transform: `scaleX(${scrollPercent / 100})` }}
+        aria-hidden="true"
+      />
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link href="/" className="wordmark" aria-label="Veyra home">
+            <VeyraMark size={34} />
+            <span>
+              VEYRA<span className="wordmark-dot">.</span>
+            </span>
+          </Link>
+          <nav aria-label="Site navigation" className="header-nav">
+            <a href="#results">THE REPORT</a>
+            <Link href="/methodology">METHODOLOGY</Link>
+            <Link href="/privacy">PRIVACY</Link>
+          </nav>
+          <a className="header-action" href="#analyzer">
+            NEW SCAN <ArrowUpRight size={16} />
+          </a>
         </div>
-        <p className="mt-5 px-2 text-[10px] text-[#667590]">VEYRA / SIGNAL INTELLIGENCE · v0.2</p>
-      </aside>
+      </header>
 
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex h-[73px] items-center justify-between border-b border-[#283149] bg-[#111626]/90 px-5 backdrop-blur-xl sm:px-9 lg:px-11">
-          <div className="flex items-center gap-3 text-sm">
-            <span className="lg:hidden"><span className="veyra-symbol text-lg" aria-hidden>V</span></span>
-            <span className="font-semibold text-[#eff2ff] lg:font-normal lg:text-[#8796b6]">Workspace</span>
-            <span className="hidden text-[#53627f] lg:inline">/</span>
-            <span className="hidden font-medium text-[#e7ecff] lg:inline">Overview</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="flex items-center gap-2 rounded-full border border-[#38405a] bg-[#20283e] px-3 py-1.5 text-[11px] font-medium text-[#bac5e0]"><i className={`h-1.5 w-1.5 rounded-full ${report.mode === "demo" ? "bg-[#b6a6ff]" : "bg-[#74e1c0]"}`} />{report.mode === "demo" ? "Demo dataset" : "Live API data"}</span>
-            <span className="hidden items-center gap-2 rounded-full border border-[#38405a] bg-[#20283e] px-3 py-1.5 text-[11px] font-medium text-[#bac5e0] sm:flex"><Activity size={13} />Analysis ready</span>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-[1440px] px-5 pb-20 pt-9 sm:px-9 lg:px-11">
-          <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[.23em] text-[#959fd4]">Creator intelligence / Overview</div>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[32px]">Look beyond the numbers<span className="text-[#ff9688]">.</span></h1>
-              <p className="mt-2 text-sm text-[#8e9cb5]">Investigate engagement anomalies and comment patterns from public YouTube data.</p>
+      <main>
+        <section className="masthead wrap" id="analyzer">
+          <div className="masthead-grain" aria-hidden="true" />
+          <div className="masthead-copy">
+            <div className="masthead-eyebrow">
+              <span className="live-marker" /> AN INSTRUMENT FOR DIGITAL
+              SKEPTICS <span className="masthead-edition">— VOL. 001</span>
             </div>
-            <button onClick={downloadReport} className="secondary-button"><Download size={15} />Export JSON</button>
-          </div>
-
-          <section id="analyzer" className="hero-card relative scroll-mt-24 overflow-hidden rounded-[22px] border border-[#3f4267] p-6 sm:p-8">
-            <div className="pointer-events-none absolute -right-10 -top-24 h-80 w-80 rounded-full bg-[#835ba3]/25 blur-[80px]" />
-            <div className="pointer-events-none absolute bottom-0 right-24 h-48 w-48 rounded-full bg-[#eb766e]/10 blur-[70px]" />
-            <div className="relative z-10 max-w-3xl">
-              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-[#c0c2ff]"><span className="ping-dot" />VEYRA // NEW INVESTIGATION</div>
-              <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Run a signal scan</h2>
-              <p className="mt-2 max-w-2xl text-[13px] leading-[1.65] text-[#9ea9c9]">Compare engagement with recent uploads, inspect comment clusters, and review the signals—not a verdict.</p>
-              <form className="mt-6 flex flex-col gap-2.5 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void analyze("live"); }}>
-                <div className="flex min-h-12 flex-1 items-center gap-3 rounded-xl border border-[#454c70] bg-[#11172b] px-4 focus-within:border-[#a09bff]">
-                  <Link2 className="shrink-0 text-[#8190b4]" size={17} />
-                  <input ref={inputRef} className="h-12 min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#6f7b99]" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=..." aria-label="YouTube video URL" required />
-                </div>
-                <button type="submit" disabled={working} className="primary-button min-h-12 justify-center whitespace-nowrap px-6">{working ? <LoaderCircle size={17} className="animate-spin" /> : <Search size={17} />}{working ? "Analyzing" : "Analyze video"}</button>
-              </form>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5 text-[11px] text-[#8592b2]"><Info size={13} />Live mode needs a server-side YouTube API key.</span>
-                <button type="button" onClick={() => void analyze("demo")} disabled={working} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#d7d3ff] transition hover:text-white"><Play size={13} fill="currentColor" />Load demo analysis <ArrowRight size={13} /></button>
+            <h1>
+              LOOK <span>BEYOND</span>
+              <br /> THE NUMBERS<span className="accent-period">.</span>
+            </h1>
+            <p className="masthead-intro">
+              The internet runs on attention.{" "}
+              <em>Not all attention is real.</em> Trace the signals behind a
+              YouTube video&apos;s popularity.
+            </p>
+            <form onSubmit={startAnalysis} className="scan-form">
+              <div className="scan-input-wrap">
+                <Search size={19} strokeWidth={1.7} />
+                <input
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="Paste a YouTube video URL"
+                  aria-label="YouTube video URL"
+                  required
+                />
+                <span className="scan-input-hint">YOUTUBE / URL</span>
               </div>
-              {error && <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-lg border border-[#8f454e] bg-[#602f3b]/45 p-3 text-[12px] text-[#ffd2d0]"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}<button className="ml-auto" onClick={() => setError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
+              <button className="scan-submit" disabled={working} type="submit">
+                {working ? (
+                  <LoaderCircle size={20} className="animate-spin" />
+                ) : (
+                  <ArrowUpRight size={23} />
+                )}
+                <span>{working ? "SCANNING" : "ANALYZE"}</span>
+              </button>
+            </form>
+            <div className="scan-under">
+              <span>NO SIGN-IN. PUBLIC DATA. EXPLAINABLE FINDINGS.</span>
+              <button
+                type="button"
+                disabled={working}
+                onClick={() => {
+                  if (initialVideoId) router.push("/");
+                  else void load("demo");
+                }}
+              >
+                TRY THE DEMO <ArrowRight size={13} />
+              </button>
             </div>
+            {error && (
+              <div className="scan-error" role="alert">
+                <ShieldAlert size={17} />
+                {error}
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  aria-label="Dismiss error"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <SignalOrb />
+          <a href="#results" className="masthead-scroll">
+            SCROLL TO EXPLORE <ArrowDown size={16} />
+          </a>
+          <div className="masthead-side-label" aria-hidden="true">
+            VERIFY / QUESTION / INVESTIGATE
+          </div>
+        </section>
+
+        <div className="ticker" aria-hidden="true">
+          <div className="ticker-line">
+            {Array.from({ length: 4 }, (_, i) => (
+              <span key={i}>
+                QUESTION THE SIGNAL <b>✳</b> TRUST THE EVIDENCE <b>✳</b> LOOK
+                CLOSER <b>✳</b>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {!report && (
+          <section
+            id="results"
+            className="wrap scan-loading-section"
+            aria-live="polite"
+          >
+            <div className="micro-label">VEYRA / LIVE INVESTIGATION</div>
+            {working ? (
+              <>
+                <div className="loading-line" />
+                <h2>
+                  Reading the signals<span className="accent-period">.</span>
+                </h2>
+                <p>
+                  Retrieving channel history and comment patterns. The report
+                  will appear here.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>
+                  No report loaded<span className="accent-period">.</span>
+                </h2>
+                <p>Enter a public YouTube video URL above to begin.</p>
+              </>
+            )}
           </section>
+        )}
 
-          <section id="results" className="mt-11 scroll-mt-28">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <SectionTitle kicker="Signal scan / Results" title="Video overview" note={`Analyzed ${formatDate(report.analyzedAt)} · ${report.mode === "demo" ? "Fictional sample data" : "Public YouTube API data"}`} />
-              <SeverityPill level={overall} />
-            </div>
-            <div className="panel mb-5 flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-              {report.video.thumbnail ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={report.video.thumbnail} alt="Video thumbnail" referrerPolicy="no-referrer" className="aspect-video w-full shrink-0 rounded-xl object-cover sm:w-[218px]" />
-              ) : (
-                <div className="video-placeholder flex aspect-video w-full shrink-0 items-center justify-center rounded-xl sm:w-[218px]"><div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#7f7ba4]/50 bg-[#d5b5dc]/10"><Play size={24} fill="#e8c2db" className="ml-1 text-[#e8c2db]" /></div></div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-[#99a5c2]"><InitialAvatar name={report.channel.title} avatar={report.channel.avatar} size="sm" /><span className="font-semibold text-[#c5cee5]">{report.channel.title}</span><span>·</span><span>{compactNumber(report.channel.subscribers)} subscribers</span></div>
-                <h3 className="text-lg font-semibold leading-snug text-white sm:text-xl">{report.video.title}</h3>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-[#8491af]"><span className="flex items-center gap-1.5"><Clock3 size={12} />Published {formatDate(report.video.publishedAt)}</span><span>·</span><span>{Math.floor(report.video.durationSeconds / 60)} min video</span><span>·</span><span>{report.history.length} comparison uploads</span></div>
+        {report && (
+          <>
+            <section id="results" className="report-section wrap">
+              <SectionHeading
+                number="01"
+                eyebrow="THE VERDICT"
+                title="The signal, decoded"
+                description={`Analyzed ${formatDate(report.analyzedAt)} · ${report.mode === "demo" ? "Illustrative fictional data" : "Live public YouTube data"}`}
+              />
+              <div className="report-status-line reveal">
+                <span className="report-mode">
+                  <span className="live-marker" />
+                  {report.mode === "demo"
+                    ? "DEMO ENVIRONMENT"
+                    : "LIVE ANALYSIS"}
+                </span>
+                <span>INVESTIGATION / {report.video.id}</span>
+                <button type="button" onClick={downloadReport}>
+                  <Download size={14} /> EXPORT REPORT
+                </button>
               </div>
-              {report.mode === "live" && <a className="secondary-button shrink-0" href={`https://www.youtube.com/watch?v=${encodeURIComponent(report.video.id)}`} target="_blank" rel="noreferrer">Watch video <ExternalLink size={14} /></a>}
-            </div>
-            <div className="score-overview mb-5 grid gap-5 p-5 md:grid-cols-[minmax(0,.75fr)_minmax(0,1.25fr)] md:p-7">
-              <div className="flex flex-col justify-center">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.23em] text-[#6ceafb]"><span className="ping-dot" />VEYRA / INTEGRITY INDEX</div>
-                <div className="mt-5 flex flex-wrap items-center gap-5">
-                  <div className="score-dial" style={{ "--veyra-score": `${report.veyraScore.value ?? 0}%` } as CSSProperties}>
-                    <div className="score-dial-inner"><strong className="text-5xl font-bold tracking-tight text-white">{report.veyraScore.value ?? "—"}</strong><span className="mt-1 text-[10px] font-bold tracking-[.2em] text-[#82a7c4]">/ 100</span></div>
+              <div className="score-grid">
+                <div className="score-primary reveal">
+                  <div className="micro-label">
+                    VEYRA SCORE{" "}
+                    <span className="score-asterisk">/ EXPERIMENTAL INDEX</span>
                   </div>
-                  <div className="min-w-0 flex-1"><h3 className="text-xl font-semibold leading-tight text-white">{report.veyraScore.label}</h3><p className="mt-2 text-xs leading-6 text-[#92adc1]">{report.veyraScore.confidence} confidence · {report.veyraScore.coverage}% signal coverage</p><span className="score-experiment mt-3 inline-block">EXPERIMENTAL · NOT A BOT PROBABILITY</span></div>
+                  <div className="score-number-wrap">
+                    <strong className="score-number">
+                      {report.veyraScore.value ?? "—"}
+                    </strong>
+                    <span className="score-denominator">/100</span>
+                    <div
+                      className="score-orbit"
+                      aria-hidden="true"
+                      style={
+                        {
+                          "--score": `${report.veyraScore.value ?? 0}%`,
+                        } as CSSProperties
+                      }
+                    >
+                      <span />
+                    </div>
+                  </div>
+                  <div className="score-conclusion">
+                    {report.veyraScore.label}
+                  </div>
+                  <p className="score-caption">
+                    This measures observable anomalies, <strong>not</strong> the
+                    percentage of real viewers or a bot probability.
+                  </p>
+                  <div className="score-meta">
+                    <span>
+                      EVIDENCE COVERAGE <b>{report.veyraScore.coverage}%</b>
+                    </span>
+                    <span>
+                      CONFIDENCE{" "}
+                      <b>{report.veyraScore.confidence.toUpperCase()}</b>
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-5 text-[11px] leading-[1.7] text-[#8aa6bc]">A higher index means fewer anomalies in the signals Veyra can examine. It does not establish that viewers are real or that a creator purchased traffic.</p>
-              </div>
-              <div className="score-components flex flex-col justify-center gap-5 md:border-l md:border-[#253a50] md:pl-7">
-                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">Evidence breakdown</h3><Link href="/methodology" className="text-[11px] font-semibold text-[#78eaff] hover:underline">How scoring works →</Link></div>
-                {report.veyraScore.components.map((component) => (
-                  <div key={component.key}>
-                    <div className="mb-2 flex justify-between gap-3 text-[12px]"><span className="text-[#bfd1e2]">{component.label} <span className="text-[#667c97]">{component.weight}% weight</span></span><span className="font-semibold tabular-nums text-white">{component.score === null ? "No data" : `${component.score}/100`}</span></div>
-                    <div className="h-2 overflow-hidden rounded-sm bg-[#172a3a]"><div className="score-progress h-full" style={{ width: `${component.score ?? 0}%` }} /></div>
-                    <div className="mt-1.5 text-[10px] leading-5 text-[#718ca6]">{component.detail}</div>
+                <div className="score-secondary reveal">
+                  <div className="score-secondary-top">
+                    <span className="micro-label">
+                      SIGNAL BREAKDOWN / THREE LENSES
+                    </span>
+                    <Fingerprint size={22} strokeWidth={1.4} />
                   </div>
+                  <div className="score-component-list">
+                    {report.veyraScore.components.map((component, index) => (
+                      <div className="score-component" key={component.key}>
+                        <div className="score-component-header">
+                          <span>
+                            <small>0{index + 1}</small>
+                            {component.label}
+                          </span>
+                          <b>
+                            {component.score === null ? "—" : component.score}
+                            <small> / 100</small>
+                          </b>
+                        </div>
+                        <div className="component-track">
+                          <span style={{ width: `${component.score ?? 0}%` }} />
+                        </div>
+                        <p>{component.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="score-secondary-foot">
+                    <Sparkles size={17} />
+                    <p>
+                      We show uncertainty when evidence is missing. An unflagged
+                      video is not necessarily an authentic one.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="video-stats-layout">
+                <VideoPortrait report={report} />
+                <div className="stat-collection reveal">
+                  {[
+                    {
+                      label: "TOTAL VIEWS",
+                      value: report.video.views,
+                      detail: "PUBLIC COUNT",
+                    },
+                    {
+                      label: "TOTAL LIKES",
+                      value: report.video.likes,
+                      detail: "PUBLIC COUNT",
+                    },
+                    {
+                      label: "TOTAL COMMENTS",
+                      value: report.video.comments,
+                      detail: "PUBLIC COUNT",
+                    },
+                    {
+                      label: "COMPARABLE UPLOADS",
+                      value: report.history.length,
+                      detail: "CHANNEL BASELINE",
+                    },
+                  ].map((item, i) => (
+                    <div className="stat-tile" key={item.label}>
+                      <div className="stat-tile-top">
+                        <span>{item.label}</span>
+                        <span>0{i + 1}</span>
+                      </div>
+                      <strong>{compactNumber(item.value)}</strong>
+                      <small>{item.detail}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="findings-strip reveal">
+                <div className="findings-label">
+                  LATEST FINDINGS <Verdict level={overall} />
+                </div>
+                <div className="findings-items">
+                  {report.findings.slice(0, 3).map((finding) => (
+                    <div className="finding-line" key={finding.id}>
+                      <span
+                        className={`finding-pip finding-pip-${finding.level}`}
+                      />
+                      <div>
+                        <b>{finding.title}</b>
+                        <p>{finding.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section id="engagement" className="report-section wrap">
+              <SectionHeading
+                number="02"
+                eyebrow="THE PATTERNS"
+                title="Follow the imbalance"
+                description="A channel's history sets the context. Large deviations deserve review, but a consistent baseline can still hide coordinated activity."
+              />
+              <div className="metrics-list">
+                {METRICS.map(({ key }, index) => (
+                  <MetricComparisonRow
+                    key={key}
+                    metric={report.comparisons[key]}
+                    index={index}
+                  />
                 ))}
               </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <MetricStat label="Total views" value={compactNumber(report.video.views)} icon={Eye} detail="YouTube-reported lifetime total" />
-              <MetricStat label="Total likes" value={compactNumber(report.video.likes)} icon={Activity} detail="Public like count, if available" />
-              <MetricStat label="Total comments" value={compactNumber(report.video.comments)} icon={MessageCircle} detail="Includes replies; sample is top-level" />
-            </div>
-          </section>
-
-          <section id="engagement" className="mt-11 scroll-mt-28">
-            <SectionTitle kicker="01 / Channel benchmark" title="Engagement patterns" note="Historical medians provide context; comparisons are not age-matched." />
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,1fr)]">
-              <div className="panel min-w-0 p-5 sm:p-6">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div><h3 className="text-sm font-semibold text-white">Engagement across uploads</h3><p className="mt-1 text-[11px] text-[#8390aa]">Ordered by publication date, not view velocity</p></div>
-                  <div className="relative"><select aria-label="Chart metric" value={metric} onChange={(event) => setMetric(event.target.value as MetricKey)} className="appearance-none rounded-lg border border-[#39425f] bg-[#222b42] py-2 pl-3 pr-8 text-xs text-[#e0e5f5] outline-none"><option value="likeRate">Like rate</option><option value="commentRate">Comment rate</option><option value="commentsPerLike">Comments / likes</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-2.5 text-[#98a3bf]" /></div>
+              <div className="timeline-panel reveal">
+                <div className="timeline-header">
+                  <div>
+                    <div className="micro-label">HISTORICAL SIGNAL</div>
+                    <h3>Engagement trajectory</h3>
+                  </div>
+                  <div className="custom-select">
+                    <select
+                      aria-label="Chart metric"
+                      value={metric}
+                      onChange={(event) =>
+                        setMetric(event.target.value as MetricKey)
+                      }
+                    >
+                      {METRICS.map((item) => (
+                        <option value={item.key} key={item.key}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={15} />
+                  </div>
                 </div>
-                <TimelineChart history={report.history} current={report.video} metric={metric} />
+                <TimelineChart
+                  history={report.history}
+                  current={report.video}
+                  metric={metric}
+                />
+                <p className="timeline-caveat">{report.historicalCaveat}</p>
               </div>
-              <div className="panel flex flex-col p-5 sm:p-6">
-                <div className="mb-4 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Signals to investigate</h3><span className="rounded-full bg-[#33334c] px-2 py-1 text-[10px] font-semibold text-[#c5c9e9]">{important.length} notable</span></div>
-                {important.length > 0 ? (
-                  <div className="space-y-4">{important.slice(0, 4).map((finding) => (
-                    <div key={finding.id} className="flex gap-3">
-                      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${finding.level === "elevated" ? "bg-[#53353d] text-[#ffa28d]" : "bg-[#554734] text-[#f3ca81]"}`}><Flag size={15} /></div>
-                      <div><div className="text-xs font-semibold leading-relaxed text-[#e6eaf8]">{finding.title}</div><p className="mt-1 text-[11px] leading-[1.55] text-[#8e9bb4]">{finding.detail}</p></div>
+            </section>
+
+            <section id="comments" className="report-section wrap">
+              <SectionHeading
+                number="03"
+                eyebrow="THE CONVERSATION"
+                title="Human. Or hollow?"
+                description="Repeated praise, suspicious timing, and connected signals deserve a closer look. Individual wording alone cannot identify a bot or AI author."
+              />
+              <div className="comment-overview">
+                <div className="comment-lead reveal">
+                  <div className="micro-label">COMMENTS MARKED FOR REVIEW</div>
+                  <div className="comment-big-number">
+                    {report.audit.sampled
+                      ? Math.round(
+                          (report.audit.flaggedCount / report.audit.sampled) *
+                            100,
+                        )
+                      : 0}
+                    <span>%</span>
+                  </div>
+                  <div className="comment-big-sub">
+                    <span className="live-marker" /> {report.audit.flaggedCount}{" "}
+                    OF {report.audit.sampled} SAMPLED
+                  </div>
+                  <p>
+                    Based on an inspection of the latest public top-level
+                    comments. The sample is not representative of all viewers.
+                  </p>
+                </div>
+                <div className="signal-bars reveal">
+                  <div className="micro-label">
+                    PATTERN FREQUENCY{" "}
+                    <span className="dim">/ SIGNALS MAY OVERLAP</span>
+                  </div>
+                  {[
+                    ["Templated praise", report.audit.praiseCount],
+                    ["Praise saturation", report.audit.praiseWaveCount],
+                    ["Repeated wording", report.audit.repeatedCount],
+                    ["Synchronized bursts", report.audit.burstCount],
+                    ["New accounts", report.audit.newAccountCount],
+                  ].map(([label, count], index) => (
+                    <div className="signal-bar-row" key={label}>
+                      <div>
+                        <span>
+                          0{index + 1} <b>{label}</b>
+                        </span>
+                        <strong>{count}</strong>
+                      </div>
+                      <div className="signal-bar-track">
+                        <span
+                          style={{
+                            width: `${report.audit.sampled ? (Number(count) / report.audit.sampled) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                  ))}</div>
-                ) : <div className="flex flex-1 flex-col items-center justify-center py-6 text-center"><CheckCircle2 size={34} className="text-[#73d9bd]" /><p className="mt-3 text-sm text-[#cdd7e9]">No strong signals in this sample</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-[#8996b0]">Ordinary ratios cannot rule out habitual inflation across the whole channel. More evidence may be needed.</p></div>}
-                <div className="mt-auto border-t border-[#2b344c] pt-4 text-[11px] leading-[1.6] text-[#8491ad]">Indicators are independent heuristics, not estimates of fake views or bot probability.</div>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">{CHART_OPTIONS.map((option) => <MetricComparisonCard key={option.value} metric={report.comparisons[option.value]} />)}</div>
-            <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#363c54] bg-[#1b2337]/75 px-4 py-3 text-[11px] leading-[1.65] text-[#98a5bd]"><Info size={16} className="mt-0.5 shrink-0 text-[#a9b3d5]" /><span>{report.historicalCaveat} <Link href="/methodology" className="font-semibold text-[#b8bbff] hover:underline">Read the methodology</Link>.</span></div>
-          </section>
-
-          <section id="comments" className="mt-12 scroll-mt-28">
-            <SectionTitle kicker="02 / Comment audit" title="Comment patterns" note={`Inspected ${report.audit.sampled} latest public top-level comments, out of ${fullNumber(report.audit.totalReported)} reported comments including replies.`} />
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,.85fr)]">
-              <div className="panel p-5 sm:p-6"><h3 className="text-sm font-semibold text-white">Comments flagged for review</h3><AuditRing flagged={report.audit.flaggedCount} sampled={report.audit.sampled} /><div className="mt-1 text-center text-xs text-[#97a3bd]">{fullNumber(report.audit.flaggedCount)} / {fullNumber(report.audit.sampled)} examined</div><div className="mt-4 border-t border-[#2b344b] pt-3 text-center text-[11px] text-[#7f8da8]">Threshold: 3+ heuristic points, not a bot classification</div></div>
-              <div className="panel p-5 sm:p-6"><h3 className="text-sm font-semibold text-white">Pattern breakdown</h3><p className="mt-1 text-[11px] text-[#8694b0]">Signals can overlap on the same comment.</p><div className="mt-5 space-y-4">{[
-                { label: "Repeated wording", count: report.audit.repeatedCount, color: "bg-[#ff8e7d]" },
-                { label: "Generic praise", count: report.audit.praiseCount, color: "bg-[#9a9cfb]" },
-                { label: "Praise-wave members", count: report.audit.praiseWaveCount, color: "bg-[#68e9ef]" },
-                { label: "Contextual bursts", count: report.audit.burstCount, color: "bg-[#f1c081]" },
-                { label: "New accounts", count: report.audit.newAccountCount, color: "bg-[#76dbbc]" },
-              ].map((item) => <div key={item.label}><div className="mb-1.5 flex justify-between text-xs"><span className="text-[#b9c3da]">{item.label}</span><span className="tabular-nums text-white">{item.count}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#303850]"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${report.audit.sampled ? Math.min(100, (item.count / report.audit.sampled) * 100) : 0}%` }} /></div></div>)}</div><div className="mt-5 text-[11px] text-[#8190a9]">Account metadata available for {report.audit.metadataAvailableCount} / {report.audit.sampled} comments.</div></div>
-              <div className="panel p-5 sm:p-6"><h3 className="text-sm font-semibold text-white">Recent sampled activity</h3><p className="mt-1 text-[11px] text-[#8694b0]">Last 7 days; latest-first sample only</p><ActivityBars activity={report.audit.hourlyActivity} /><div className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-[#8793ad]"><Info size={13} className="mt-0.5 shrink-0" />Bursts alone are not evidence of automation.</div></div>
-            </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-              <div className="panel min-w-0 overflow-hidden">
-                <div className="flex flex-col justify-between gap-3 border-b border-[#2a3249] p-5 sm:flex-row sm:items-center sm:px-6">
-                  <div><h3 className="text-sm font-semibold text-white">Comment inspector</h3><p className="mt-1 text-[11px] text-[#8491aa]">Inspect evidence and open original comments in YouTube.</p></div>
-                  <div className="flex flex-wrap items-center gap-2"><div className="flex h-9 items-center gap-2 rounded-lg border border-[#36405b] bg-[#1e273c] px-3"><Search size={13} className="text-[#8898b4]" /><input value={commentQuery} onChange={(event) => { setCommentQuery(event.target.value); setCommentsShown(6); }} placeholder="Search comments" aria-label="Search comments" className="w-32 bg-transparent text-[11px] text-white outline-none placeholder:text-[#73819e] sm:w-40" /></div></div>
+                  ))}
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto border-b border-[#2a3249] px-5 py-3 sm:px-6">{[
-                  { value: "flagged", label: `Flagged (${report.audit.flaggedCount})` },
-                  { value: "all", label: `All (${report.audit.sampled})` },
-                  { value: "unflagged", label: "Unflagged" },
-                ].map((option) => <button key={option.value} className={`filter-tab ${commentFilter === option.value ? "filter-tab-active" : ""}`} onClick={() => { setCommentFilter(option.value as typeof commentFilter); setCommentsShown(6); }}>{option.label}</button>)}</div>
-                {filteredComments.length > 0 ? (
-                  <div>{filteredComments.slice(0, commentsShown).map((comment) => <CommentItem key={comment.id} comment={comment} mode={report.mode} videoId={report.video.id} />)}</div>
-                ) : <div className="flex min-h-48 flex-col items-center justify-center gap-2 px-6 text-center"><MessageCircle size={26} className="text-[#75819d]" /><p className="text-sm text-[#abb6ce]">No matching comments</p><p className="text-xs text-[#7b89a3]">{report.audit.unavailableReason ?? "Try another filter or search term."}</p></div>}
-                {filteredComments.length > commentsShown && <button className="flex w-full items-center justify-center gap-2 border-t border-[#2a3249] py-4 text-xs font-semibold text-[#b6b9fc] hover:bg-[#212a43]" onClick={() => setCommentsShown((previous) => previous + 10)}>Show more comments <ChevronDown size={14} /></button>}
-              </div>
-              <div className="flex min-w-0 flex-col gap-4">
-                <div className="panel p-5 sm:p-6"><div className="mb-4 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Repeated text clusters</h3><span className="text-xs text-[#a6b3d0]">{report.audit.clusterCount} groups</span></div>
-                  {report.audit.clusters.length ? <div className="space-y-4">{report.audit.clusters.slice(0, 4).map((cluster) => <div key={cluster.id} className="rounded-xl border border-[#303a56] bg-[#202a42]/70 p-4"><div className="mb-2 flex items-center justify-between"><span className="text-[11px] font-semibold text-[#d8ddf9]">Cluster #{cluster.id}</span><span className="rounded-md bg-[#453e53] px-2 py-1 text-[10px] font-semibold text-[#ffc0ab]">{cluster.size} messages</span></div><p className="line-clamp-3 text-xs leading-[1.65] text-[#b3bfdb]">“{cluster.example}”</p><p className="mt-2 text-[10px] text-[#7989a7]">{cluster.authorCount} distinct author identifiers</p></div>)}</div> : <div className="py-5 text-xs leading-relaxed text-[#8f9bb5]">No groups of at least three highly similar messages were found in this sample.</div>}
+                <div className="activity-panel reveal">
+                  <div className="micro-label">LATEST ACTIVITY / 7 DAYS</div>
+                  <ActivityBars activity={report.audit.hourlyActivity} />
+                  <small>
+                    Most recent sampled comments only. Activity bursts alone do
+                    not imply automation.
+                  </small>
                 </div>
-                <div className="rounded-xl border border-[#38445d] bg-[#222c43]/70 p-5"><div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#edf1fc]"><ShieldAlert size={17} className="text-[#ffa18d]" />A flag is not a verdict</div><p className="text-xs leading-[1.8] text-[#96a5bf]">Legitimate viewers repeat phrases, respond during premieres, and create new accounts. Signals only highlight comments worth manual inspection.</p><Link href="/methodology" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#b7beff]">How flags work <ArrowRight size={13} /></Link></div>
               </div>
-            </div>
-          </section>
+              <div className="inspector-layout">
+                <div className="inspector-main reveal">
+                  <div className="inspector-header">
+                    <div>
+                      <div className="micro-label">
+                        INVESTIGATION / COMMENT FEED
+                      </div>
+                      <h3>Inspect the conversation</h3>
+                    </div>
+                    <div className="inspector-count">
+                      {filteredComments.length} RESULTS
+                    </div>
+                  </div>
+                  <div className="inspector-controls">
+                    <div className="inspector-tabs">
+                      {[
+                        [
+                          "flagged",
+                          `FOR REVIEW (${report.audit.flaggedCount})`,
+                        ],
+                        ["all", `ALL (${report.audit.sampled})`],
+                        ["unflagged", "UNFLAGGED"],
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          className={commentFilter === value ? "active" : ""}
+                          onClick={() => {
+                            setCommentFilter(value as typeof commentFilter);
+                            setCommentsShown(5);
+                          }}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="inspector-search">
+                      <Search size={15} />
+                      <input
+                        aria-label="Search comments"
+                        placeholder="Search comments"
+                        value={commentQuery}
+                        onChange={(event) => {
+                          setCommentQuery(event.target.value);
+                          setCommentsShown(5);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {filteredComments.length ? (
+                    filteredComments
+                      .slice(0, commentsShown)
+                      .map((comment) => (
+                        <CommentCard
+                          key={comment.id}
+                          comment={comment}
+                          mode={report.mode}
+                          videoId={report.video.id}
+                        />
+                      ))
+                  ) : (
+                    <div className="inspector-empty">
+                      {report.audit.unavailableReason ??
+                        "No matching comments. Try a different filter."}
+                    </div>
+                  )}
+                  {filteredComments.length > commentsShown && (
+                    <button
+                      className="load-more"
+                      onClick={() => setCommentsShown((prev) => prev + 10)}
+                      type="button"
+                    >
+                      LOAD MORE COMMENTS <ArrowDown size={15} />
+                    </button>
+                  )}
+                </div>
+                <aside className="inspector-sidebar reveal">
+                  <div className="micro-label">
+                    CLUSTER INTELLIGENCE / {report.audit.clusterCount} DETECTED
+                  </div>
+                  <h3>
+                    Similar voices<span className="accent-period">.</span>
+                  </h3>
+                  {report.audit.clusters.length ? (
+                    report.audit.clusters.slice(0, 5).map((cluster) => (
+                      <div className="cluster" key={cluster.id}>
+                        <div>
+                          <span>
+                            CLUSTER {String(cluster.id).padStart(2, "0")}
+                          </span>
+                          <b>{cluster.size} COMMENTS</b>
+                        </div>
+                        <blockquote>“{cluster.example}”</blockquote>
+                        <small>
+                          {cluster.authorCount} DISTINCT AUTHOR IDENTIFIERS
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="cluster-empty">
+                      No repeated-text clusters in the latest sample.
+                    </p>
+                  )}
+                  <div className="caution-note">
+                    <ShieldAlert size={19} />
+                    <div>
+                      <b>A FLAG IS NOT A VERDICT</b>
+                      <p>
+                        Shared language can be organic. Every signal is a prompt
+                        for human review—not a definitive accusation.
+                      </p>
+                      <Link href="/methodology">
+                        READ THE METHODOLOGY <ArrowUpRight size={13} />
+                      </Link>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </section>
 
-          <section id="history" className="mt-12 scroll-mt-28">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-4"><SectionTitle kicker="03 / Historical context" title="Comparable channel uploads" note={report.cohortDescription} /><div className="relative mb-2"><SlidersHorizontal size={13} className="pointer-events-none absolute left-3 top-2.5 text-[#9daac7]" /><select className="appearance-none rounded-lg border border-[#39425f] bg-[#20283d] py-2 pl-8 pr-8 text-xs text-[#dae2f3] outline-none" value={historySort} onChange={(event) => setHistorySort(event.target.value as typeof historySort)} aria-label="Sort history"><option value="recent">Most recent</option><option value="views">Most viewed</option><option value="like-rate">Highest like rate</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-2.5 text-[#9daac7]" /></div></div>
-            <div className="panel overflow-hidden"><div className="overflow-x-auto"><table className="w-full min-w-[630px] text-left"><thead className="bg-[#212a42]"><tr className="text-[10px] uppercase tracking-[.1em] text-[#8190ae]"><th className="w-12 px-5 py-4 font-semibold">#</th><th className="px-3 py-4 font-semibold">Video / Published</th><th className="px-3 py-4 text-right font-semibold">Views</th><th className="px-3 py-4 text-right font-semibold">Like rate</th><th className="px-5 py-4 text-right font-semibold">Comment rate</th></tr></thead><tbody>{sortedHistory.slice(0, historyShown).map((video, index) => <HistoryRow key={video.id} video={video} index={index} demo={report.mode === "demo"} />)}</tbody></table></div>
-              {sortedHistory.length === 0 && <p className="px-5 py-10 text-center text-xs text-[#99a6c1]">No comparable uploads were available.</p>}
-              {sortedHistory.length > historyShown && <button className="flex w-full items-center justify-center gap-2 border-t border-[#2a3249] py-4 text-xs font-semibold text-[#b6b9fc] hover:bg-[#212a43]" onClick={() => setHistoryShown((previous) => previous + 15)}>Show more uploads <ChevronDown size={14} /></button>}
-            </div>
-          </section>
-          <footer className="mt-14 flex flex-col justify-between gap-4 border-t border-[#2b344b] pt-7 text-[11px] leading-relaxed text-[#8290aa] sm:flex-row"><p>Veyra · See the signals. Question the numbers. · Investigative research preview.</p><div className="flex flex-wrap gap-4"><Link href="/methodology" className="hover:text-white">Methodology</Link><Link href="/privacy" className="hover:text-white">Privacy</Link><a href="https://developers.google.com/youtube/terms/developer-policies" target="_blank" rel="noreferrer" className="hover:text-white">YouTube API policies ↗</a></div></footer>
-        </main>
-      </div>
+            <section
+              id="history"
+              className="report-section wrap history-section"
+            >
+              <SectionHeading
+                number="04"
+                eyebrow="CHANNEL DNA"
+                title="The bigger picture"
+                description={report.cohortDescription}
+              />
+              <div className="history-top reveal">
+                <div className="micro-label">
+                  COMPARABLE UPLOADS / {report.history.length} RESULTS
+                </div>
+                <div className="custom-select">
+                  <select
+                    aria-label="Sort historical uploads"
+                    value={historySort}
+                    onChange={(event) =>
+                      setHistorySort(event.target.value as typeof historySort)
+                    }
+                  >
+                    <option value="recent">MOST RECENT</option>
+                    <option value="views">MOST VIEWED</option>
+                    <option value="like-rate">HIGHEST LIKE RATE</option>
+                  </select>
+                  <ChevronDown size={15} />
+                </div>
+              </div>
+              <div className="history-table-wrap reveal">
+                <table className="history-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>VIDEO / PUBLISHED</th>
+                      <th>VIEWS</th>
+                      <th>LIKE RATE</th>
+                      <th>COMMENT RATE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedHistory
+                      .slice(0, historyShown)
+                      .map((video, index) => (
+                        <HistoryRow
+                          key={video.id}
+                          index={index}
+                          video={video}
+                          mode={report.mode}
+                        />
+                      ))}
+                  </tbody>
+                </table>
+                {!sortedHistory.length && (
+                  <p className="table-empty">
+                    No comparable uploads available for this channel.
+                  </p>
+                )}
+                {sortedHistory.length > historyShown && (
+                  <button
+                    type="button"
+                    className="load-more"
+                    onClick={() => setHistoryShown((count) => count + 15)}
+                  >
+                    REVEAL MORE UPLOADS <ArrowDown size={16} />
+                  </button>
+                )}
+              </div>
+              <p className="history-hint">
+                {report.mode === "demo"
+                  ? "Fictional demo titles do not lead to live reports."
+                  : "Select any video to open a new Veyra investigation. You will stay within Veyra."}
+              </p>
+            </section>
+          </>
+        )}
+      </main>
+
+      <footer className="footer">
+        <div className="wrap footer-inner">
+          <div>
+            <Link href="/" className="footer-brand">
+              <VeyraMark size={42} />
+              <span>
+                VEYRA<span className="accent-period">.</span>
+              </span>
+            </Link>
+            <p>
+              Look beyond the numbers.
+              <br />
+              Question the signal. Trust the evidence.
+            </p>
+          </div>
+          <div className="footer-column">
+            <span>EXPLORE</span>
+            <a href="#analyzer">NEW INVESTIGATION</a>
+            <a href="#results">LATEST REPORT</a>
+          </div>
+          <div className="footer-column">
+            <span>REFERENCE</span>
+            <Link href="/methodology">METHODOLOGY</Link>
+            <Link href="/privacy">PRIVACY</Link>
+            <a
+              href="https://developers.google.com/youtube/terms/developer-policies"
+              target="_blank"
+              rel="noreferrer"
+            >
+              YOUTUBE API POLICIES ↗
+            </a>
+          </div>
+          <div className="footer-signature">
+            THE SIGNAL IS
+            <br />
+            NEVER THE STORY<span className="accent-period">.</span>
+          </div>
+        </div>
+        <div className="wrap footer-bottom">
+          <span>© {new Date().getFullYear()} VEYRA / RESEARCH PREVIEW</span>
+          <span>BUILT TO QUESTION / NOT TO ACCUSE</span>
+          <span>V / 0.3</span>
+        </div>
+      </footer>
     </div>
   );
 }

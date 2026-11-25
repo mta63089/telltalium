@@ -16,7 +16,11 @@ function normalizeText(value: string): string {
 }
 
 function tokens(value: string): Set<string> {
-  return new Set(normalizeText(value).split(" ").filter((word) => word.length > 2));
+  return new Set(
+    normalizeText(value)
+      .split(" ")
+      .filter((word) => word.length > 2),
+  );
 }
 
 function similarity(a: Set<string>, b: Set<string>): number {
@@ -35,33 +39,64 @@ function genericLanguage(value: string): boolean {
   const words = text.split(" ").filter(Boolean);
   if (words.length < 1 || words.length > 48 || text.length > 270) return false;
   if (/\?|\b\d{1,2}:\d{2}\b|\b\d{3,}\b/.test(value)) return false;
-  if (/\b(disagree|however|although|except|but|critique|wrong|misleading|source|citation|evidence|timestamp|study|graph|chart|statistics|interview|minute|scene|chapter)\b/i.test(text)) return false;
-  const praise = /\b(amazing|awesome|good|nice|cool|excellent|incredible|fantastic|insightful|inspiring|inspirational|thought provoking|powerful|brilliant|perfect|beautiful|outstanding|wonderful|informative|impressive|great|valuable|legendary|masterpiece|remarkable|important|best|love|loved|adore|appreciate|appreciated|well said|spot on|keep it up|keep going|thank you|thanks)\b/i.test(text);
-  const genericTarget = /\b(video|content|creator|channel|insight|insights|perspective|message|take|analysis|breakdown|work|job|upload|topic|issue|viewers|people|everyone|you|your|this|that|always|sharing|more|watching|quality)\b/i.test(text);
-  return (praise && (genericTarget || words.length <= 5)) ||
-    /^(so true|well said|keep speaking the truth|this deserves more views|who is watching in \d{4})$/.test(text);
+  if (
+    /\b(disagree|however|although|except|but|critique|wrong|misleading|source|citation|evidence|timestamp|study|graph|chart|statistics|interview|minute|scene|chapter)\b/i.test(
+      text,
+    )
+  )
+    return false;
+  const praise =
+    /\b(amazing|awesome|good|nice|cool|excellent|incredible|fantastic|insightful|inspiring|inspirational|thought provoking|powerful|brilliant|perfect|beautiful|outstanding|wonderful|informative|impressive|great|valuable|legendary|masterpiece|remarkable|important|best|love|loved|adore|appreciate|appreciated|well said|spot on|keep it up|keep going|thank you|thanks)\b/i.test(
+      text,
+    );
+  const genericTarget =
+    /\b(video|content|creator|channel|insight|insights|perspective|message|take|analysis|breakdown|work|job|upload|topic|issue|viewers|people|everyone|you|your|this|that|always|sharing|more|watching|quality)\b/i.test(
+      text,
+    );
+  return (
+    (praise && (genericTarget || words.length <= 5)) ||
+    /^(so true|well said|keep speaking the truth|this deserves more views|who is watching in \d{4})$/.test(
+      text,
+    )
+  );
 }
 
 function usernamePattern(value: string): boolean {
   const name = value.replace(/^@/, "").toLowerCase().trim();
-  return /^user[-_]?\d{6,}$/.test(name) ||
+  return (
+    /^user[-_]?\d{6,}$/.test(name) ||
     /^(?:[a-z]{2,10}[-_])?\d{8,}$/.test(name) ||
-    /^[a-z]{3,}[-_]\d{8,}$/.test(name);
+    /^[a-z]{3,}[-_]\d{8,}$/.test(name)
+  );
 }
 
 function isRecentAccount(comment: CommentRecord): boolean {
   if (!comment.accountCreatedAt) return false;
-  const age = new Date(comment.publishedAt).getTime() - new Date(comment.accountCreatedAt).getTime();
+  const age =
+    new Date(comment.publishedAt).getTime() -
+    new Date(comment.accountCreatedAt).getTime();
   return age >= 0 && age < 30 * 86_400_000;
 }
 
-function makeActivity(comments: CommentRecord[]): Array<{ label: string; count: number }> {
+function makeActivity(
+  comments: CommentRecord[],
+): Array<{ label: string; count: number }> {
   const now = new Date();
   const days = Array.from({ length: 7 }, (_, i) => {
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (6 - i)));
+    const start = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - (6 - i),
+      ),
+    );
     return {
       key: start.toISOString().slice(0, 10),
-      label: start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
+      label: start.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }),
       count: 0,
     };
   });
@@ -134,22 +169,38 @@ export function analyzeComments(
       id,
       size: members.length,
       example: list[members[0]].text,
-      authorCount: new Set(members.map((index) => list[index].authorChannelId ?? list[index].author)).size,
+      authorCount: new Set(
+        members.map(
+          (index) => list[index].authorChannelId ?? list[index].author,
+        ),
+      ).size,
     };
   });
 
   // A praise wave describes saturation in a SAMPLE, not AI authorship.
   // Require volume and distinct authors; the resulting flag means review, not bot.
-  const praiseIndexes = list.flatMap((comment, index) => generic[index] ? [index] : []);
-  const praiseAuthors = new Set(praiseIndexes.map((index) => list[index].authorChannelId ?? list[index].author));
-  const broadPraiseWave = praiseIndexes.length >= 12 &&
-    praiseIndexes.length / Math.max(1, n) >= 0.25 && praiseAuthors.size >= 10;
+  const praiseIndexes = list.flatMap((comment, index) =>
+    generic[index] ? [index] : [],
+  );
+  const praiseAuthors = new Set(
+    praiseIndexes.map(
+      (index) => list[index].authorChannelId ?? list[index].author,
+    ),
+  );
+  const broadPraiseWave =
+    praiseIndexes.length >= 12 &&
+    praiseIndexes.length / Math.max(1, n) >= 0.25 &&
+    praiseAuthors.size >= 10;
   const praiseWave = new Set<number>(broadPraiseWave ? praiseIndexes : []);
 
   // A burst alone is not a bot signal. It counts only when the window is also
   // dominated by repeated or generic text (at least 40%).
   const suspiciousWindow = new Set<number>();
-  const ordered = list.map((comment, index) => ({ index, at: new Date(comment.publishedAt).getTime() }))
+  const ordered = list
+    .map((comment, index) => ({
+      index,
+      at: new Date(comment.publishedAt).getTime(),
+    }))
     .filter((item) => Number.isFinite(item.at))
     .sort((a, b) => a.at - b.at);
   let left = 0;
@@ -157,16 +208,25 @@ export function analyzeComments(
     while (ordered[right].at - ordered[left].at > 5 * 60_000) left++;
     const window = ordered.slice(left, right + 1);
     if (window.length < 10) continue;
-    const unusual = window.filter(({ index }) =>
-      clusterByIndex.has(index) || generic[index],
+    const unusual = window.filter(
+      ({ index }) => clusterByIndex.has(index) || generic[index],
     ).length;
     if (unusual / window.length >= 0.4) {
       for (const { index } of window) {
-        if (clusterByIndex.has(index) || generic[index]) suspiciousWindow.add(index);
+        if (clusterByIndex.has(index) || generic[index])
+          suspiciousWindow.add(index);
       }
       const praiseInWindow = window.filter(({ index }) => generic[index]);
-      const distinct = new Set(praiseInWindow.map(({ index }) => list[index].authorChannelId ?? list[index].author));
-      if (praiseInWindow.length >= 8 && distinct.size >= 8 && praiseInWindow.length / window.length >= 0.6) {
+      const distinct = new Set(
+        praiseInWindow.map(
+          ({ index }) => list[index].authorChannelId ?? list[index].author,
+        ),
+      );
+      if (
+        praiseInWindow.length >= 8 &&
+        distinct.size >= 8 &&
+        praiseInWindow.length / window.length >= 0.6
+      ) {
         for (const { index } of praiseInWindow) praiseWave.add(index);
       }
     }
@@ -185,7 +245,8 @@ export function analyzeComments(
     if (suspiciousWindow.has(index)) signals.push("burst-activity");
     if (isRecentAccount(comment)) signals.push("new-account");
     if (usernamePattern(comment.author)) signals.push("username-pattern");
-    if (/https?:\/\/\S+|\b(?:t\.me|wa\.me)\/\S+/i.test(comment.text)) signals.push("external-link");
+    if (/https?:\/\/\S+|\b(?:t\.me|wa\.me)\/\S+/i.test(comment.text))
+      signals.push("external-link");
 
     const weights: Record<CommentSignal, number> = {
       "repeated-text": 3,
@@ -212,13 +273,27 @@ export function analyzeComments(
     totalReported,
     samplingMethod: "latest-top-level",
     flaggedCount: scored.filter((comment) => comment.flagged).length,
-    repeatedCount: scored.filter((comment) => comment.signals.includes("repeated-text")).length,
-    genericCount: scored.filter((comment) => comment.signals.includes("generic-language")).length,
-    burstCount: scored.filter((comment) => comment.signals.includes("burst-activity")).length,
-    newAccountCount: scored.filter((comment) => comment.signals.includes("new-account")).length,
-    praiseCount: scored.filter((comment) => comment.signals.includes("generic-language")).length,
-    praiseWaveCount: scored.filter((comment) => comment.signals.includes("praise-wave")).length,
-    metadataAvailableCount: scored.filter((comment) => comment.accountCreatedAt !== null).length,
+    repeatedCount: scored.filter((comment) =>
+      comment.signals.includes("repeated-text"),
+    ).length,
+    genericCount: scored.filter((comment) =>
+      comment.signals.includes("generic-language"),
+    ).length,
+    burstCount: scored.filter((comment) =>
+      comment.signals.includes("burst-activity"),
+    ).length,
+    newAccountCount: scored.filter((comment) =>
+      comment.signals.includes("new-account"),
+    ).length,
+    praiseCount: scored.filter((comment) =>
+      comment.signals.includes("generic-language"),
+    ).length,
+    praiseWaveCount: scored.filter((comment) =>
+      comment.signals.includes("praise-wave"),
+    ).length,
+    metadataAvailableCount: scored.filter(
+      (comment) => comment.accountCreatedAt !== null,
+    ).length,
     clusterCount: clusters.length,
     clusters,
     comments: scored,

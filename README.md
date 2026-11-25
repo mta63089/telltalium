@@ -1,5 +1,12 @@
 # Veyra
 
+## v0.3 — Editorial interface and internal analysis routes
+
+The dashboard uses a sidebar-free, responsive, minimalist editorial design with animated signal artwork, a sticky masthead, scroll progress, and intersection-triggered report reveals. Motion respects the operating system’s reduced-motion setting. All historical titles in **live reports** now open `/analyze/[videoId]`, a shareable Veyra analysis route that automatically runs the live API analysis. Synthetic demo titles remain non-clickable because their IDs are fictional.
+
+The Veyra Score and the analysis heuristics are unchanged in v0.3; they remain experimental, not authenticity probabilities. The API key remains server-side in `.env.local`. No dependency on an animation library was introduced.
+
+
 A local-first research MVP for examining unusual YouTube engagement and comment patterns. Built with **Next.js App Router, React 19, TypeScript, and Tailwind CSS v4**. The app ships with a polished dashboard and a fully functional **fictional demo dataset**, so it is usable immediately without credentials.
 
 > **Research aid, not a fraud detector.** Public YouTube data cannot prove that individual views or comments are purchased. This project surfaces reviewable, uncalibrated anomalies and does not assign bot probabilities.

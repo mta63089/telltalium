@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs><linearGradient id="glow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#55f2ff"/><stop offset="1" stop-color="#bf67ff"/></linearGradient></defs>
-  <path fill="#090c17" stroke="#4ee9ff" stroke-width="2" d="M13 3h38l10 10v38L51 61H13L3 51V13z"/>
-  <path fill="none" stroke="url(#glow)" stroke-width="6" stroke-linecap="square" d="M14 17l17 30 19-30"/>
-  <path stroke="#ff5bc2" stroke-width="3" d="M32 36l14-19"/>
-  <path stroke="#55f2ff" d="M6 19v-7h7M51 57h6v-6"/>
+  <rect width="64" height="64" rx="10" fill="#10110f" />
+  <path d="M6 11H20L32 42L44 11H58L36.7 56H27.3L6 11Z" fill="#d6ff52"/>
+  <path d="M22 11H34L40.6 24.5L34.2 37.8L22 11Z" fill="#10110f"/>
+  <path d="M43 8H60L55.5 18H38.5L43 8Z" fill="#d6ff52" opacity=".65"/>
 </svg>

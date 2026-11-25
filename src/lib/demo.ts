@@ -82,13 +82,14 @@ export function getDemoReport(): AnalysisReport {
   };
 
   const comments: CommentRecord[] = Array.from({ length: 110 }, (_, i) => {
-    const isRepeated = (i < 25 && i % 2 === 0) || i % 8 === 0 || (i >= 65 && i < 80);
+    const isRepeated =
+      (i < 25 && i % 2 === 0) || i % 8 === 0 || (i >= 65 && i < 80);
     const isTemplate = i % 9 === 0;
     const isLink = i % 23 === 0;
     const text = isRepeated
-      ? (i % 2 === 0
+      ? i % 2 === 0
         ? "This is the best video ever, everyone needs to watch this amazing content!"
-        : "This is the best video ever! Everyone needs to watch this amazing content.")
+        : "This is the best video ever! Everyone needs to watch this amazing content."
       : isLink
         ? "See more details here https://example.org/discussion"
         : isTemplate
@@ -97,7 +98,10 @@ export function getDemoReport(): AnalysisReport {
     const suspicious = isRepeated || isTemplate;
     return {
       id: `demo-comment-${i}`,
-      author: suspicious && i % 3 === 0 ? `user_${10000000 + i * 17}` : `Viewer ${i + 1}`,
+      author:
+        suspicious && i % 3 === 0
+          ? `user_${10000000 + i * 17}`
+          : `Viewer ${i + 1}`,
       authorChannelId: `demo-author-${i}`,
       authorAvatar: null,
       accountCreatedAt: suspicious && i % 3 === 0 ? ago(18) : ago(500 + i * 6),
@@ -118,6 +122,7 @@ export function getDemoReport(): AnalysisReport {
     video,
     history,
     comments,
-    cohortDescription: "36 fictional long-form uploads in the same category, produced for demonstrating the interface.",
+    cohortDescription:
+      "36 fictional long-form uploads in the same category, produced for demonstrating the interface.",
   });
 }
