@@ -1,4 +1,4 @@
-# Veyra v0.3 design and navigation
+# Telltalium v0.3 design and navigation
 
 ## Intent
 
@@ -6,7 +6,7 @@ A minimalist, editorial, speculative-instrument aesthetic: ink-black backgrounds
 
 ## Animation behavior
 
-- The hero signal scanner rotates slowly; its fine concentric rings create a distinctive animated brand motif.
+- The hero is now an animated layered waveform, including pulses, interference traces, a traveling scan line and a pulse-node indicator.
 - Small ambient status dots pulse.
 - The ticker rolls continuously.
 - Report sections reveal on entry using IntersectionObserver.
@@ -28,7 +28,7 @@ A minimalist, editorial, speculative-instrument aesthetic: ink-black backgrounds
 ## Files
 
 - `src/components/dashboard.tsx`: report layout, animations, internal history links, loading state.
-- `src/components/veyra-mark.tsx`: angular SVG logomark, reusable with the supporting page shell.
+- `src/components/telltalium-mark.tsx`: waveform SVG logomark, reusable with the supporting page shell.
 - `src/components/docs-shell.tsx`: matching minimalist branding for supporting pages.
 - `src/lib/video-url.ts`: shared YouTube URL parsing used in client route navigation and server analysis API.
 - `src/app/globals.css`: complete v0.3 visual system and responsive/reduced-motion rules.

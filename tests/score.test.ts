@@ -39,16 +39,16 @@ const comments: CommentRecord[] = Array.from({ length: 30 }, (_, i) => ({
 const run = (h = history, c = comments) =>
   createReport({ mode: "demo", channel, video, history: h, comments: c });
 
-describe("Veyra score", () => {
+describe("Telltalium score", () => {
   it("does not turn missing evidence into a perfect score", () => {
     const result = run([], []);
-    expect(result.veyraScore.value).toBeNull();
-    expect(result.veyraScore.coverage).toBe(0);
+    expect(result.telltaliumScore.value).toBeNull();
+    expect(result.telltaliumScore.coverage).toBe(0);
   });
   it("produces a bounded value with sufficient evidence", () => {
     const result = run();
-    expect(result.veyraScore.value).toBeGreaterThanOrEqual(0);
-    expect(result.veyraScore.value).toBeLessThanOrEqual(100);
+    expect(result.telltaliumScore.value).toBeGreaterThanOrEqual(0);
+    expect(result.telltaliumScore.value).toBeLessThanOrEqual(100);
   });
   it("lowers the index for coordinated praise", () => {
     const suspect = comments.map((comment, i) => ({
@@ -58,8 +58,8 @@ describe("Veyra score", () => {
           ? "Amazing and incredibly insightful content, your perspective is always inspiring!"
           : "What a wonderful video, absolutely brilliant perspective and powerful message!",
     }));
-    expect(run(history, suspect).veyraScore.value!).toBeLessThan(
-      run().veyraScore.value!,
+    expect(run(history, suspect).telltaliumScore.value!).toBeLessThan(
+      run().telltaliumScore.value!,
     );
   });
 });

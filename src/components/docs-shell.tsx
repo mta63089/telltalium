@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { VeyraMark } from "./veyra-mark";
+import { TelltaliumMark } from "./telltalium-mark";
 
 export function DocsShell({
   index,
@@ -16,13 +16,13 @@ export function DocsShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="veyra-app">
+    <div className="telltalium-app">
       <header className="site-header">
         <div className="site-header-inner">
-          <Link href="/" className="wordmark" aria-label="Veyra home">
-            <VeyraMark size={34} />
+          <Link href="/" className="wordmark" aria-label="Telltalium home">
+            <TelltaliumMark size={34} />
             <span>
-              VEYRA<span className="wordmark-dot">.</span>
+              TELLTALIUM<span className="wordmark-dot">.</span>
             </span>
           </Link>
           <nav className="header-nav" aria-label="Site navigation">
@@ -52,7 +52,7 @@ export function DocsShell({
         <div className="docs-content">{children}</div>
       </main>
       <footer className="docs-footer wrap">
-        <span>VEYRA / QUESTION THE SIGNAL</span>
+        <span>TELLTALIUM / QUESTION THE SIGNAL</span>
         <Link href="/">
           START AN INVESTIGATION <ArrowUpRight size={13} />
         </Link>

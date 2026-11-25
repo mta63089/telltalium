@@ -1,4 +1,4 @@
-# Veyra — historical intelligence roadmap
+# Telltalium — historical intelligence roadmap
 
 ## Why persist channel data?
 
@@ -11,7 +11,7 @@
 
 Do not enable long-term public-data retention or public derived scores without securing the required YouTube analytics permissions. Default YouTube rules limit storage of non-authorized data to **30 days** (delete or refresh); the additional accepted analytics policy may permit statistical and derived metrics for up to **36 months**, while titles, descriptions, and comment text still require 30-day refresh/delete. The approval's scope and the aggregation rules must be reviewed before cross-creator benchmarking.
 
-References: https://developers.google.com/youtube/terms/developer-policies and https://developers.google.com/youtube/terms/derived-metrics-policy
+References: <https://developers.google.com/youtube/terms/developer-policies> and <https://developers.google.com/youtube/terms/derived-metrics-policy>
 
 ## Proposed stack (not implemented yet)
 

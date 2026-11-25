@@ -1,12 +1,15 @@
 import { DocsShell } from "@/components/docs-shell";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Privacy" };
+export const metadata: Metadata = {
+  title: "Privacy",
+  alternates: { canonical: "/privacy" },
+};
 
 const sections = [
   {
     title: "Data accessed",
-    body: "In live mode Veyra requests public YouTube video and channel information, up to 100 recent upload IDs, and up to 200 latest public top-level comments with available author-channel creation dates. No YouTube sign-in, OAuth, browser cookies, or private commenter activity is requested by this code.",
+    body: "In live mode Telltalium requests public YouTube video and channel information, up to 100 recent upload IDs, and up to 200 latest public top-level comments with available author-channel creation dates. No YouTube sign-in, OAuth, browser cookies, or private commenter activity is requested by this code.",
   },
   {
     title: "Storage and retention",
@@ -28,7 +31,7 @@ export default function PrivacyPage() {
       index="P"
       kicker="DATA / DISCLOSURE"
       title="Privacy, plainly"
-      introduction="What Veyra accesses, what it does not, and where the boundaries of this MVP are. Hosting providers may handle data differently."
+      introduction="What Telltalium accesses, what it does not, and where the boundaries of this MVP are. Hosting providers may handle data differently."
     >
       <div className="docs-section-list">
         {sections.map((section, index) => (

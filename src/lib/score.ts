@@ -1,8 +1,8 @@
 import type {
   CommentAudit,
   MetricComparison,
-  VeyraScore,
-  VeyraScoreComponent,
+  TelltaliumScore,
+  TelltaliumScoreComponent,
 } from "./types";
 
 const clamp = (value: number, lower = 0, upper = 100) =>
@@ -13,10 +13,10 @@ const clamp = (value: number, lower = 0, upper = 100) =>
  * Every component can be unavailable; missing evidence never becomes a perfect score.
  * Thresholds are deliberately documented and uncalibrated pending validation.
  */
-export function calculateVeyraScore(
+export function calculateTelltaliumScore(
   comparisons: Record<string, MetricComparison>,
   audit: CommentAudit,
-): VeyraScore {
+): TelltaliumScore {
   const metrics = Object.values(comparisons).filter(
     (metric) =>
       metric.current !== null &&
@@ -68,7 +68,7 @@ export function calculateVeyraScore(
       )
     : null;
 
-  const components: VeyraScoreComponent[] = [
+  const components: TelltaliumScoreComponent[] = [
     {
       key: "engagement",
       label: "Engagement consistency",
@@ -93,7 +93,7 @@ export function calculateVeyraScore(
   ];
 
   const available = components.filter(
-    (component): component is VeyraScoreComponent & { score: number } =>
+    (component): component is TelltaliumScoreComponent & { score: number } =>
       component.score !== null,
   );
   const coverage = available.reduce(
@@ -110,7 +110,7 @@ export function calculateVeyraScore(
           ) / coverage,
         )
       : null;
-  const confidence: VeyraScore["confidence"] =
+  const confidence: TelltaliumScore["confidence"] =
     coverage >= 90 &&
     audit.sampled >= 100 &&
     metrics.every((metric) => metric.sampleSize >= 12)
@@ -132,6 +132,6 @@ export function calculateVeyraScore(
     confidence,
     components,
     explanation:
-      "Experimental Veyra index based on observed anomalies, NOT the percentage of authentic viewers, a bot probability, or proof of purchased traffic. Similar channel-wide manipulation may evade channel baselines. Data are not age-matched or peer-benchmarked.",
+      "Experimental Telltalium index based on observed anomalies, NOT the percentage of authentic viewers, a bot probability, or proof of purchased traffic. Similar channel-wide manipulation may evade channel baselines. Data are not age-matched or peer-benchmarked.",
   };
 }

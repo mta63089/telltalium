@@ -48,7 +48,7 @@ import {
   type FormEvent,
 } from "react";
 import { ActivityBars, TimelineChart } from "./charts";
-import { VeyraMark } from "./veyra-mark";
+import { TelltaliumMark } from "./telltalium-mark";
 
 const SIGNAL_LABELS: Record<CommentSignal, string> = {
   "repeated-text": "Repeated wording",
@@ -122,22 +122,93 @@ function SectionHeading({
   );
 }
 
-function SignalOrb() {
+function SignalSpectrum() {
+  const pulse =
+    "M22 238H92L122 222L143 255L168 170L197 329L230 236H272L298 194L327 278L357 224L378 241H409L438 195L457 249L485 236H591";
   return (
-    <div className="signal-orb" aria-hidden="true">
-      <div className="orb-glow" />
-      <div className="orb-ring orb-ring-one" />
-      <div className="orb-ring orb-ring-two" />
-      <div className="orb-ring orb-ring-three" />
-      <div className="orb-axis orb-axis-x" />
-      <div className="orb-axis orb-axis-y" />
-      <div className="orb-scanner" />
-      <div className="orb-center">
-        <VeyraMark size={98} />
+    <div className="signal-spectrum" aria-hidden="true">
+      <div className="spectrum-grain" />
+      <div className="spectrum-topline">
+        <span>TT / FREQUENCY STUDY</span>
+        <span className="spectrum-status">
+          <i /> MONITORING
+        </span>
       </div>
-      <div className="orb-coordinate orb-coordinate-top">V/01 · SCANNING</div>
-      <div className="orb-coordinate orb-coordinate-bottom">
-        SIGNAL INTELLIGENCE / 2026
+      <svg
+        className="spectrum-art"
+        viewBox="0 0 620 480"
+        fill="none"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <linearGradient
+            id="telltalium-spectrum-gradient"
+            x1="20"
+            y1="200"
+            x2="590"
+            y2="250"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#8C7FFF" />
+            <stop offset="45%" stopColor="#7EF3D7" />
+            <stop offset="100%" stopColor="#52BDD7" />
+          </linearGradient>
+          <radialGradient id="telltalium-spectrum-halo">
+            <stop offset="0" stopColor="#73efd9" stopOpacity=".24" />
+            <stop offset="1" stopColor="#73efd9" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <ellipse
+          cx="315"
+          cy="238"
+          rx="255"
+          ry="172"
+          fill="url(#telltalium-spectrum-halo)"
+        />
+        {Array.from({ length: 7 }, (_, index) => (
+          <path
+            key={index}
+            className="spectrum-echo"
+            d={pulse}
+            transform={`translate(0 ${(index - 3) * 14})`}
+            style={{ "--trace-delay": `${index * 180}ms` } as CSSProperties}
+          />
+        ))}
+        <path
+          className="spectrum-primary"
+          d={pulse}
+          stroke="url(#telltalium-spectrum-gradient)"
+        />
+        <circle
+          className="spectrum-ping-halo"
+          cx="168"
+          cy="170"
+          r="19"
+          stroke="#8C7FFF"
+          strokeWidth="1"
+        />
+        <circle
+          className="spectrum-ping"
+          cx="168"
+          cy="170"
+          r="5"
+          fill="#8C7FFF"
+        />
+        <circle
+          className="spectrum-ping-halo spectrum-ping-halo-second"
+          cx="438"
+          cy="195"
+          r="14"
+          stroke="#7EF3D7"
+          strokeWidth="1"
+        />
+        <circle cx="438" cy="195" r="4" fill="#7EF3D7" />
+      </svg>
+      <span className="spectrum-scan-line" />
+      <div className="spectrum-bottomline">
+        <span>ANOMALY / 01</span>
+        <span>LISTEN TO THE DATA</span>
+        <span>00:00:01</span>
       </div>
     </div>
   );
@@ -345,7 +416,7 @@ function HistoryRow({
             <Link
               href={`/analyze/${encodeURIComponent(video.id)}`}
               className="history-video-link"
-              title="Open Veyra analysis"
+              title="Open Telltalium analysis"
             >
               <span>{video.title}</span>
               <ArrowUpRight size={16} aria-hidden />
@@ -545,7 +616,7 @@ export default function Dashboard({
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = href;
-    anchor.download = `veyra-${report.video.id}-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `telltalium-${report.video.id}-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
@@ -565,7 +636,7 @@ export default function Dashboard({
         : "normal";
 
   return (
-    <div className="veyra-app">
+    <div className="telltalium-app">
       <div
         className="scroll-progress"
         style={{ transform: `scaleX(${scrollPercent / 100})` }}
@@ -573,10 +644,10 @@ export default function Dashboard({
       />
       <header className="site-header">
         <div className="site-header-inner">
-          <Link href="/" className="wordmark" aria-label="Veyra home">
-            <VeyraMark size={34} />
+          <Link href="/" className="wordmark" aria-label="Telltalium home">
+            <TelltaliumMark size={34} />
             <span>
-              VEYRA<span className="wordmark-dot">.</span>
+              TELLTALIUM<span className="wordmark-dot">.</span>
             </span>
           </Link>
           <nav aria-label="Site navigation" className="header-nav">
@@ -596,16 +667,18 @@ export default function Dashboard({
           <div className="masthead-copy">
             <div className="masthead-eyebrow">
               <span className="live-marker" /> AN INSTRUMENT FOR DIGITAL
-              SKEPTICS <span className="masthead-edition">— VOL. 001</span>
+              SKEPTICS{" "}
+              <span className="masthead-edition">— FIELD NOTES 001</span>
             </div>
             <h1>
-              LOOK <span>BEYOND</span>
-              <br /> THE NUMBERS<span className="accent-period">.</span>
+              READ BETWEEN
+              <br />
+              THE <span>SIGNALS</span>
+              <span className="accent-period">.</span>
             </h1>
             <p className="masthead-intro">
-              The internet runs on attention.{" "}
-              <em>Not all attention is real.</em> Trace the signals behind a
-              YouTube video&apos;s popularity.
+              Popularity leaves patterns. <em>Some are worth questioning.</em>{" "}
+              Investigate the engagement behind any YouTube video.
             </p>
             <form onSubmit={startAnalysis} className="scan-form">
               <div className="scan-input-wrap">
@@ -655,7 +728,7 @@ export default function Dashboard({
               </div>
             )}
           </div>
-          <SignalOrb />
+          <SignalSpectrum />
           <a href="#results" className="masthead-scroll">
             SCROLL TO EXPLORE <ArrowDown size={16} />
           </a>
@@ -681,7 +754,7 @@ export default function Dashboard({
             className="wrap scan-loading-section"
             aria-live="polite"
           >
-            <div className="micro-label">VEYRA / LIVE INVESTIGATION</div>
+            <div className="micro-label">TELLTALIUM / LIVE INVESTIGATION</div>
             {working ? (
               <>
                 <div className="loading-line" />
@@ -728,12 +801,12 @@ export default function Dashboard({
               <div className="score-grid">
                 <div className="score-primary reveal">
                   <div className="micro-label">
-                    VEYRA SCORE{" "}
+                    TELLTALIUM SCORE{" "}
                     <span className="score-asterisk">/ EXPERIMENTAL INDEX</span>
                   </div>
                   <div className="score-number-wrap">
                     <strong className="score-number">
-                      {report.veyraScore.value ?? "—"}
+                      {report.telltaliumScore.value ?? "—"}
                     </strong>
                     <span className="score-denominator">/100</span>
                     <div
@@ -741,7 +814,7 @@ export default function Dashboard({
                       aria-hidden="true"
                       style={
                         {
-                          "--score": `${report.veyraScore.value ?? 0}%`,
+                          "--score": `${report.telltaliumScore.value ?? 0}%`,
                         } as CSSProperties
                       }
                     >
@@ -749,7 +822,7 @@ export default function Dashboard({
                     </div>
                   </div>
                   <div className="score-conclusion">
-                    {report.veyraScore.label}
+                    {report.telltaliumScore.label}
                   </div>
                   <p className="score-caption">
                     This measures observable anomalies, <strong>not</strong> the
@@ -757,11 +830,12 @@ export default function Dashboard({
                   </p>
                   <div className="score-meta">
                     <span>
-                      EVIDENCE COVERAGE <b>{report.veyraScore.coverage}%</b>
+                      EVIDENCE COVERAGE{" "}
+                      <b>{report.telltaliumScore.coverage}%</b>
                     </span>
                     <span>
                       CONFIDENCE{" "}
-                      <b>{report.veyraScore.confidence.toUpperCase()}</b>
+                      <b>{report.telltaliumScore.confidence.toUpperCase()}</b>
                     </span>
                   </div>
                 </div>
@@ -773,24 +847,28 @@ export default function Dashboard({
                     <Fingerprint size={22} strokeWidth={1.4} />
                   </div>
                   <div className="score-component-list">
-                    {report.veyraScore.components.map((component, index) => (
-                      <div className="score-component" key={component.key}>
-                        <div className="score-component-header">
-                          <span>
-                            <small>0{index + 1}</small>
-                            {component.label}
-                          </span>
-                          <b>
-                            {component.score === null ? "—" : component.score}
-                            <small> / 100</small>
-                          </b>
+                    {report.telltaliumScore.components.map(
+                      (component, index) => (
+                        <div className="score-component" key={component.key}>
+                          <div className="score-component-header">
+                            <span>
+                              <small>0{index + 1}</small>
+                              {component.label}
+                            </span>
+                            <b>
+                              {component.score === null ? "—" : component.score}
+                              <small> / 100</small>
+                            </b>
+                          </div>
+                          <div className="component-track">
+                            <span
+                              style={{ width: `${component.score ?? 0}%` }}
+                            />
+                          </div>
+                          <p>{component.detail}</p>
                         </div>
-                        <div className="component-track">
-                          <span style={{ width: `${component.score ?? 0}%` }} />
-                        </div>
-                        <p>{component.detail}</p>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                   <div className="score-secondary-foot">
                     <Sparkles size={17} />
@@ -1162,7 +1240,7 @@ export default function Dashboard({
               <p className="history-hint">
                 {report.mode === "demo"
                   ? "Fictional demo titles do not lead to live reports."
-                  : "Select any video to open a new Veyra investigation. You will stay within Veyra."}
+                  : "Select any video to open a new Telltalium investigation. You will stay within Telltalium."}
               </p>
             </section>
           </>
@@ -1173,9 +1251,9 @@ export default function Dashboard({
         <div className="wrap footer-inner">
           <div>
             <Link href="/" className="footer-brand">
-              <VeyraMark size={42} />
+              <TelltaliumMark size={42} />
               <span>
-                VEYRA<span className="accent-period">.</span>
+                TELLTALIUM<span className="accent-period">.</span>
               </span>
             </Link>
             <p>
@@ -1202,15 +1280,17 @@ export default function Dashboard({
             </a>
           </div>
           <div className="footer-signature">
-            THE SIGNAL IS
+            EVERY PATTERN
             <br />
-            NEVER THE STORY<span className="accent-period">.</span>
+            TELLS A STORY<span className="accent-period">.</span>
           </div>
         </div>
         <div className="wrap footer-bottom">
-          <span>© {new Date().getFullYear()} VEYRA / RESEARCH PREVIEW</span>
+          <span>
+            © {new Date().getFullYear()} TELLTALIUM / RESEARCH PREVIEW
+          </span>
           <span>BUILT TO QUESTION / NOT TO ACCUSE</span>
-          <span>V / 0.3</span>
+          <span>TT / 0.4</span>
         </div>
       </footer>
     </div>

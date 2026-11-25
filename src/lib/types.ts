@@ -92,7 +92,7 @@ export interface Finding {
   category: "engagement" | "comments" | "coverage";
 }
 
-export interface VeyraScoreComponent {
+export interface TelltaliumScoreComponent {
   key: "engagement" | "comments" | "coordination";
   label: string;
   weight: number;
@@ -100,12 +100,12 @@ export interface VeyraScoreComponent {
   detail: string;
 }
 
-export interface VeyraScore {
+export interface TelltaliumScore {
   value: number | null;
   label: string;
   coverage: number;
   confidence: "low" | "moderate";
-  components: VeyraScoreComponent[];
+  components: TelltaliumScoreComponent[];
   explanation: string;
 }
 
@@ -119,7 +119,7 @@ export interface AnalysisReport {
   comparisons: Record<MetricKey, MetricComparison>;
   audit: CommentAudit;
   findings: Finding[];
-  veyraScore: VeyraScore;
+  telltaliumScore: TelltaliumScore;
   historicalCaveat: string;
   cohortDescription: string;
 }

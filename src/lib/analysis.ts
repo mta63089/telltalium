@@ -1,5 +1,5 @@
 import { analyzeComments } from "./comment-detection";
-import { calculateVeyraScore } from "./score";
+import { calculateTelltaliumScore } from "./score";
 import type {
   AnalysisReport,
   ChannelRecord,
@@ -242,7 +242,7 @@ export function createReport(input: {
     comparisons,
     audit,
     findings,
-    veyraScore: calculateVeyraScore(comparisons, audit),
+    telltaliumScore: calculateTelltaliumScore(comparisons, audit),
     historicalCaveat:
       "Historical ratios are based on current lifetime totals, not matched video ages; uploads younger than seven days have no lifetime-ratio comparison. Shorts classification uses duration as an approximation. Deviations are exploratory and cannot establish fake views.",
     cohortDescription:

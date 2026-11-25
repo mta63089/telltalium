@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
-const USER_AGENT = "Veyra/0.2 (YouTube engagement research MVP)";
+const USER_AGENT = "Telltalium/0.2 (YouTube engagement research MVP)";
 
 interface YouTubeVideo {
   id: string;

@@ -2,7 +2,10 @@ import Dashboard from "@/components/dashboard";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-export const metadata: Metadata = { title: "Video investigation" };
+export const metadata: Metadata = {
+  title: "Video investigation",
+  robots: { index: false, follow: true },
+};
 
 export default async function VideoAnalysisPage({
   params,

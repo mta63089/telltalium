@@ -2,7 +2,10 @@ import { DocsShell } from "@/components/docs-shell";
 import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Methodology" };
+export const metadata: Metadata = {
+  title: "Methodology",
+  alternates: { canonical: "/methodology" },
+};
 
 const sections = [
   {
@@ -14,8 +17,8 @@ const sections = [
     body: "A 35% or larger deviation from the median is considered worth reviewing when the robust standardized deviation is at least 2; a 60% or larger deviation is elevated when it is at least 3. If the median absolute deviation is zero, a magnitude-only fallback is used. These are deliberately simple, uncalibrated heuristics. No fraud probability, confidence percentage, or proof of artificial traffic is produced.",
   },
   {
-    title: "Veyra Score (experimental index)",
-    body: "The displayed 0–100 index is a diagnostic summary, NOT the proportion of authentic views and NOT a bot probability. Engagement consistency contributes 35%, comment integrity 45%, and coordination indicators 20%. Engagement uses the absolute magnitude of robust channel-median deviations; comments consider the proportion meeting a multi-signal review threshold and the prevalence of generic praise; coordination considers repeated-text groups and contextual bursts. Component scores are clamped to 0–100. If fewer than two components are available or combined coverage is under 55%, Veyra shows no score rather than assuming missing data are authentic. Remaining weights are normalized. Evidence coverage is the fraction of weights with usable data, not a claim of statistical certainty. Confidence remains low or moderate until stronger longitudinal comparisons are supported. These heuristic weights must be calibrated against labeled examples before general trust claims are made.",
+    title: "Telltalium Score (experimental index)",
+    body: "The displayed 0–100 index is a diagnostic summary, NOT the proportion of authentic views and NOT a bot probability. Engagement consistency contributes 35%, comment integrity 45%, and coordination indicators 20%. Engagement uses the absolute magnitude of robust channel-median deviations; comments consider the proportion meeting a multi-signal review threshold and the prevalence of generic praise; coordination considers repeated-text groups and contextual bursts. Component scores are clamped to 0–100. If fewer than two components are available or combined coverage is under 55%, Telltalium shows no score rather than assuming missing data are authentic. Remaining weights are normalized. Evidence coverage is the fraction of weights with usable data, not a claim of statistical certainty. Confidence remains low or moderate until stronger longitudinal comparisons are supported. These heuristic weights must be calibrated against labeled examples before general trust claims are made.",
   },
   {
     title: "Comment sampling",
@@ -27,7 +30,7 @@ const sections = [
   },
   {
     title: "Generic praise and potential coordination",
-    body: "Veyra identifies generic positive language including verbose, templated-looking compliments and tracks whether such language saturates the latest-first comment sample. A praise wave requires at least 12 generic comments from 10 distinct authors comprising at least 25% of the sample, or 8 such comments by 8 distinct authors in a dense contextual window. This adds two review points on top of one generic-language point; it does NOT mean the messages were written by AI or the authors are bots. Individual long generic compliments remain weak signals. Similar messages can be organic fan behavior.",
+    body: "Telltalium identifies generic positive language including verbose, templated-looking compliments and tracks whether such language saturates the latest-first comment sample. A praise wave requires at least 12 generic comments from 10 distinct authors comprising at least 25% of the sample, or 8 such comments by 8 distinct authors in a dense contextual window. This adds two review points on top of one generic-language point; it does NOT mean the messages were written by AI or the authors are bots. Individual long generic compliments remain weak signals. Similar messages can be organic fan behavior.",
   },
   {
     title: "Other comment signals",
