@@ -244,7 +244,7 @@ export function ActivityBars({
         >
           <div className="flex flex-1 items-end justify-center">
             <div
-              className="group relative w-full max-w-11 rounded-t-md bg-gradient-to-t from-[#6e7b3f] to-[#d6ff52] transition-opacity hover:opacity-80"
+              className="group relative w-full max-w-11 rounded-t-md bg-linear-to-t from-[#6e7b3f] to-[#d6ff52] transition-opacity hover:opacity-80"
               style={{ height: `${Math.max(3, (item.count / max) * 100)}%` }}
               title={`${item.label}: ${item.count} sampled comments`}
             >
